@@ -1,0 +1,83 @@
+import pytest
+from resume_bench.grading.grader import grade_single
+from resume_bench.grading.models import GradingConfig
+
+
+class TestGradeSingle:
+
+    def test_full_resume(self):
+        gt = {
+            "basics": {"fname": "Jane", "lname": "Smith", "email": "jane@test.com"},
+            "experience": [
+                {"company": "Google", "position": "SWE", "description": ["Built features"]},
+            ],
+            "education": [
+                {"institution": "MIT", "area": "CS"},
+            ],
+            "skills": [{"category": "Lang", "skills": ["Python", "Go"]}],
+            "personalSummary": "Experienced engineer.",
+        }
+        pred = {
+            "basics": {"fname": "Jane", "lname": "Smith", "email": "jane@test.com"},
+            "experience": [
+                {"company": "Google", "position": "SWE", "description": ["Built features"]},
+            ],
+            "education": [
+                {"institution": "MIT", "area": "CS"},
+            ],
+            "skills": [{"category": "Lang", "skills": ["Python", "Go"]}],
+            "personalSummary": "Experienced engineer.",
+        }
+
+        score = grade_single(gt, pred)
+
+        assert score.macro_entity_f1 > 0.9
+
+    def test_empty_resume(self):
+        score = grade_single({}, {})
+
+        assert score.macro_entity_f1 == 0.0
+        for sec in score.sections.values():
+            assert sec.is_vacuous is True
+
+    def test_missing_sections(self):
+        gt = {
+            "basics": {"fname": "John"},
+            "experience": [{"company": "Google", "position": "SWE"}],
+        }
+        pred = {
+            "basics": {"fname": "John"},
+        }
+
+        score = grade_single(gt, pred)
+
+        assert "basics" in score.sections
+        assert "experience" in score.sections
+        assert score.sections["experience"].omission_rate == 1.0
+
+    def test_personal_summary_scoring(self):
+        gt = {"personalSummary": "Experienced software engineer with 10 years."}
+        pred = {"personalSummary": "Experienced software engineer with 10 years of experience."}
+
+        score = grade_single(gt, pred)
+
+        assert "personalSummary" in score.sections
+        assert score.sections["personalSummary"].f1 > 0.7
+
+    def test_non_vacuous_sections(self):
+        gt = {
+            "basics": {"fname": "John"},
+            "experience": [],
+            "education": [],
+        }
+        pred = {
+            "basics": {"fname": "John"},
+            "experience": [],
+            "education": [],
+        }
+
+        score = grade_single(gt, pred)
+
+        nv = score.non_vacuous_sections
+        assert "experience" not in nv
+        assert "education" not in nv

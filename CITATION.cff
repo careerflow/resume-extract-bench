@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+title: "ResumeExtractBench: A Benchmark for Structured Resume Extraction"
+message: "If you use this benchmark, please cite it using the metadata from this file."
+type: dataset
+authors:
+  - name: "Careerflow Research"
+    website: "https://careerflow.ai"
+  # TODO: Add individual author names before publication
+  # - given-names: First
+  #   family-names: Last
+  #   affiliation: Careerflow
+  # - given-names: First
+  #   family-names: Last
+  #   affiliation: LlamaIndex
+repository-code: "https://github.com/careerflow/resume-extract-bench"
+url: "https://github.com/careerflow/resume-extract-bench"
+keywords:
+  - resume parsing
+  - information extraction
+  - benchmark
+  - structured extraction
+  - document understanding
+  - NLP
+license: Apache-2.0
+date-released: "2026-09-01"

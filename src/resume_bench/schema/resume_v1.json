@@ -1,0 +1,292 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "resume_v1",
+  "x-benchmark-version": "1.0",
+  "type": "object",
+  "properties": {
+    "basics": {
+      "type": "object",
+      "description": "Basic personal and contact information",
+      "properties": {
+        "fname": {
+          "type": ["string", "null"],
+          "description": "First name of the person"
+        },
+        "lname": {
+          "type": ["string", "null"],
+          "description": "Last name (surname) of the person"
+        },
+        "email": {
+          "type": ["string", "null"],
+          "description": "Primary email address"
+        },
+        "phone": {
+          "type": ["string", "null"],
+          "description": "Phone number exactly as written in the resume"
+        },
+        "city": {
+          "type": ["string", "null"],
+          "description": "City from the person's location"
+        },
+        "state": {
+          "type": ["string", "null"],
+          "description": "State, province, or region"
+        },
+        "country": {
+          "type": ["string", "null"],
+          "description": "Country from the person's location"
+        },
+        "hasPersonalPhoto": {
+          "type": ["boolean", "null"],
+          "description": "true if the resume contains a personal profile photo"
+        }
+      }
+    },
+    "experience": {
+      "type": "array",
+      "description": "Structured roles from experience sections",
+      "items": {
+        "type": "object",
+        "properties": {
+          "company": {
+            "type": ["string", "null"],
+            "description": "Name of employer or company"
+          },
+          "position": {
+            "type": ["string", "null"],
+            "description": "Job title or role"
+          },
+          "startMonth": {
+            "type": ["integer", "null"],
+            "description": "Month the role started (1-12)"
+          },
+          "startYear": {
+            "type": ["integer", "null"],
+            "description": "Year the role started"
+          },
+          "endMonth": {
+            "type": ["integer", "null"],
+            "description": "Month the role ended (1-12)"
+          },
+          "endYear": {
+            "type": ["integer", "null"],
+            "description": "Year the role ended"
+          },
+          "currentlyWorkHere": {
+            "type": ["boolean", "null"],
+            "description": "true if this is the current role"
+          },
+          "city": {
+            "type": ["string", "null"],
+            "description": "City where the role is located"
+          },
+          "country": {
+            "type": ["string", "null"],
+            "description": "Country where the role is located"
+          },
+          "description": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of bullet-point achievements or responsibilities"
+          }
+        }
+      }
+    },
+    "education": {
+      "type": "array",
+      "description": "List of formal education entries",
+      "items": {
+        "type": "object",
+        "properties": {
+          "institution": {
+            "type": ["string", "null"],
+            "description": "Name of the educational institution"
+          },
+          "area": {
+            "type": ["string", "null"],
+            "description": "Field of study or major"
+          },
+          "studyType": {
+            "type": ["string", "null"],
+            "description": "Type of degree or diploma"
+          },
+          "score": {
+            "type": ["string", "null"],
+            "description": "GPA, grade, or other academic metric"
+          },
+          "startMonth": {
+            "type": ["integer", "null"],
+            "description": "Month study began (1-12)"
+          },
+          "startYear": {
+            "type": ["integer", "null"],
+            "description": "Year study began"
+          },
+          "endMonth": {
+            "type": ["integer", "null"],
+            "description": "Month study ended (1-12)"
+          },
+          "endYear": {
+            "type": ["integer", "null"],
+            "description": "Year study ended"
+          },
+          "currentlyStudyHere": {
+            "type": ["boolean", "null"],
+            "description": "true if currently studying here"
+          },
+          "city": {
+            "type": ["string", "null"],
+            "description": "City where institution is located"
+          },
+          "country": {
+            "type": ["string", "null"],
+            "description": "Country where institution is located"
+          },
+          "description": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Education bullet points"
+          }
+        }
+      }
+    },
+    "projects": {
+      "type": "array",
+      "description": "List of projects from dedicated project sections",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": ["string", "null"],
+            "description": "Name or title of the project"
+          },
+          "description": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Project bullet points"
+          },
+          "startYear": {
+            "type": ["integer", "null"],
+            "description": "Year the project started"
+          },
+          "endYear": {
+            "type": ["integer", "null"],
+            "description": "Year the project ended"
+          },
+          "url": {
+            "type": ["string", "null"],
+            "description": "Project link or repository URL"
+          }
+        }
+      }
+    },
+    "personalSummary": {
+      "type": ["string", "null"],
+      "description": "Professional summary, profile, or objective"
+    },
+    "certifications": {
+      "type": "array",
+      "description": "Certifications, licenses, and professional credentials",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": ["string", "null"],
+            "description": "Name of the certification"
+          },
+          "issuer": {
+            "type": ["string", "null"],
+            "description": "Organization that issued the certification"
+          },
+          "date": {
+            "type": ["string", "null"],
+            "description": "Date of certification"
+          }
+        }
+      }
+    },
+    "awards": {
+      "type": "array",
+      "description": "Awards, honors, and recognitions",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": ["string", "null"],
+            "description": "Name of the award"
+          },
+          "awarder": {
+            "type": ["string", "null"],
+            "description": "Organization that granted the award"
+          },
+          "date": {
+            "type": ["string", "null"],
+            "description": "Date of award"
+          }
+        }
+      }
+    },
+    "volunteering": {
+      "type": "array",
+      "description": "Volunteer positions",
+      "items": {
+        "type": "object",
+        "properties": {
+          "organization": {
+            "type": ["string", "null"],
+            "description": "Name of the volunteer organization"
+          },
+          "position": {
+            "type": ["string", "null"],
+            "description": "Volunteer role or title"
+          },
+          "description": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Volunteering bullet points"
+          },
+          "startYear": {
+            "type": ["integer", "null"],
+            "description": "Year volunteering started"
+          },
+          "endYear": {
+            "type": ["integer", "null"],
+            "description": "Year volunteering ended"
+          },
+          "currentlyVolunteerHere": {
+            "type": ["boolean", "null"],
+            "description": "true if currently volunteering here"
+          }
+        }
+      }
+    },
+    "skills": {
+      "type": "array",
+      "description": "List of skill categories extracted from the resume",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": ["string", "null"],
+            "description": "Skill category or group name"
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of individual skills in this category"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "basics": {
+    "fname": "Alice",
+    "lname": "Johnson",
+    "email": "alice.johnson@email.com",
+    "phone": "+1-555-0101",
+    "city": "San Francisco",
+    "state": "California",
+    "country": "United States",
+    "hasPersonalPhoto": false
+  },
+  "experience": [
+    {
+      "company": "TechCorp",
+      "position": "Senior Software Engineer",
+      "startMonth": 3,
+      "startYear": 2021,
+      "currentlyWorkHere": true,
+      "city": "San Francisco",
+      "country": "United States",
+      "description": [
+        "Led development of microservices architecture serving 2M daily users",
+        "Reduced API latency by 40% through caching and query optimization",
+        "Mentored team of 4 junior engineers"
+      ]
+    },
+    {
+      "company": "StartupXYZ",
+      "position": "Software Engineer",
+      "startMonth": 6,
+      "startYear": 2018,
+      "endMonth": 2,
+      "endYear": 2021,
+      "city": "Palo Alto",
+      "country": "United States",
+      "description": [
+        "Built real-time data pipeline processing 500K events per second",
+        "Implemented CI/CD pipeline reducing deployment time by 60%"
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Stanford University",
+      "area": "Computer Science",
+      "studyType": "Master of Science",
+      "startYear": 2016,
+      "endYear": 2018,
+      "city": "Stanford",
+      "country": "United States"
+    }
+  ],
+  "projects": [],
+  "personalSummary": "Senior software engineer with 8 years of experience in distributed systems and cloud architecture. Passionate about building scalable, reliable backend services.",
+  "certifications": [
+    {
+      "name": "AWS Solutions Architect Professional",
+      "issuer": "Amazon Web Services",
+      "date": "2023"
+    }
+  ],
+  "awards": [],
+  "volunteering": [],
+  "skills": [
+    {
+      "category": "Languages",
+      "skills": ["Python", "Go", "Java", "TypeScript"]
+    },
+    {
+      "category": "Cloud",
+      "skills": ["AWS", "GCP", "Kubernetes", "Docker"]
+    },
+    {
+      "category": "Databases",
+      "skills": ["PostgreSQL", "Redis", "DynamoDB"]
+    }
+  ]
+}
