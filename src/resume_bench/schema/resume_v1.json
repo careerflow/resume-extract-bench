@@ -10,11 +10,11 @@
       "properties": {
         "fname": {
           "type": ["string", "null"],
-          "description": "First name of the person"
+          "description": "First name of the person. Split the full name into first and last — everything before the final surname token is the first name (e.g. 'Jean Marie' from 'Jean Marie Schiraldi')."
         },
         "lname": {
           "type": ["string", "null"],
-          "description": "Last name (surname) of the person"
+          "description": "Last name (surname) of the person. The final surname token from the full name (e.g. 'Schiraldi' from 'Jean Marie Schiraldi')."
         },
         "email": {
           "type": ["string", "null"],
@@ -22,29 +22,29 @@
         },
         "phone": {
           "type": ["string", "null"],
-          "description": "Phone number exactly as written in the resume"
+          "description": "Phone number exactly as written in the resume, including country code if present"
         },
         "city": {
           "type": ["string", "null"],
-          "description": "City from the person's location"
+          "description": "City from the person's location (e.g. 'New York' from 'New York, NY, USA'). Extract only the city name, not state or country."
         },
         "state": {
           "type": ["string", "null"],
-          "description": "State, province, or region"
+          "description": "State, province, or region from the person's location (e.g. 'NY' from 'New York, NY, USA'). Extract only the state/province, not city or country."
         },
         "country": {
           "type": ["string", "null"],
-          "description": "Country from the person's location"
+          "description": "Country from the person's location (e.g. 'USA' from 'New York, NY, USA'). Extract only the country name."
         },
         "hasPersonalPhoto": {
           "type": ["boolean", "null"],
-          "description": "true if the resume contains a personal profile photo"
+          "description": "true if the resume contains a personal profile photo or headshot. false if there is no personal photo. Look for embedded images that appear to be portrait/headshot photographs of a person, typically near the top of the resume or in a sidebar. Do not count logos, icons, decorative graphics, or certification badges."
         }
       }
     },
     "experience": {
       "type": "array",
-      "description": "Structured roles from experience sections",
+      "description": "Structured roles from experience sections. Only include roles from dedicated work-history sections with employer, title, dates, and responsibilities. Never include roles inferred from narrative summary, profile, or objective sections.",
       "items": {
         "type": "object",
         "properties": {
@@ -54,55 +54,53 @@
           },
           "position": {
             "type": ["string", "null"],
-            "description": "Job title or role"
+            "description": "Job title or role only, copied exactly from a structured experience entry. Do not take titles from narrative summary/profile/objective sections, and do not append text from dates, locations, or other fields."
           },
           "startMonth": {
             "type": ["integer", "null"],
-            "description": "Month the role started (1-12)"
+            "description": "Month the role started as an integer 1-12 (e.g. January = 1, December = 12). Parse from date strings like 'May 2025' -> 5. Null if no start month is stated."
           },
           "startYear": {
             "type": ["integer", "null"],
-            "description": "Year the role started"
+            "description": "Year the role started as a 4-digit integer (e.g. 2025). Parse from date strings. Null if no start year is stated."
           },
           "endMonth": {
             "type": ["integer", "null"],
-            "description": "Month the role ended (1-12)"
+            "description": "Month the role ended as an integer 1-12. Null if the role is ongoing or no end month is stated."
           },
           "endYear": {
             "type": ["integer", "null"],
-            "description": "Year the role ended"
+            "description": "Year the role ended as a 4-digit integer. Null if the role is ongoing or no end year is stated."
           },
           "currentlyWorkHere": {
             "type": ["boolean", "null"],
-            "description": "true if this is the current role"
+            "description": "true if this is the person's current role (end date is 'Present', 'Current', or ongoing). false otherwise."
           },
           "city": {
             "type": ["string", "null"],
-            "description": "City where the role is located"
+            "description": "City where the role is located (e.g. 'New York' from 'New York, NY'). Null if no city is stated."
           },
           "country": {
             "type": ["string", "null"],
-            "description": "Country where the role is located"
+            "description": "Country where the role is located. Null if no country is stated."
           },
           "description": {
             "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Array of bullet-point achievements or responsibilities"
+            "items": {"type": "string"},
+            "description": "Array of individual bullet-point achievements or responsibilities. Each array element is one bullet. A bullet may wrap onto multiple visual lines; keep continuation lines in the same element. Strip bullet symbols (-, *, etc.) but preserve the complete visible text."
           }
         }
       }
     },
     "education": {
       "type": "array",
-      "description": "List of formal education entries",
+      "description": "List of formal education entries — degrees, diplomas, and academic programs from universities, colleges, and schools. Do NOT include professional certifications, licenses, training courses, workshops, or professional memberships here — those belong in the certifications section.",
       "items": {
         "type": "object",
         "properties": {
           "institution": {
             "type": ["string", "null"],
-            "description": "Name of the educational institution"
+            "description": "Name of the educational institution (university, college, or school)"
           },
           "area": {
             "type": ["string", "null"],
@@ -110,7 +108,7 @@
           },
           "studyType": {
             "type": ["string", "null"],
-            "description": "Type of degree or diploma"
+            "description": "Type of degree or diploma (e.g. Bachelor's, Master's, PhD, Associate's, High School Diploma)"
           },
           "score": {
             "type": ["string", "null"],
@@ -118,23 +116,23 @@
           },
           "startMonth": {
             "type": ["integer", "null"],
-            "description": "Month study began (1-12)"
+            "description": "Month study began as an integer 1-12. Null if no start month is stated."
           },
           "startYear": {
             "type": ["integer", "null"],
-            "description": "Year study began"
+            "description": "Year study began as a 4-digit integer. Null if no start year is stated."
           },
           "endMonth": {
             "type": ["integer", "null"],
-            "description": "Month study ended (1-12)"
+            "description": "Month study ended as an integer 1-12. Null if still studying or no end month is stated."
           },
           "endYear": {
             "type": ["integer", "null"],
-            "description": "Year study ended"
+            "description": "Year study ended as a 4-digit integer. Null if still studying or no end year is stated."
           },
           "currentlyStudyHere": {
             "type": ["boolean", "null"],
-            "description": "true if currently studying here"
+            "description": "true if currently studying here (end date is 'Expected', 'Present', or 'Current'). false otherwise."
           },
           "city": {
             "type": ["string", "null"],
@@ -146,10 +144,8 @@
           },
           "description": {
             "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Education bullet points"
+            "items": {"type": "string"},
+            "description": "List of education bullet points — coursework, honors, activities, etc. Do NOT include information already captured in other fields (score, institution, area, studyType, dates)."
           }
         }
       }
@@ -166,33 +162,31 @@
           },
           "description": {
             "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Project bullet points"
+            "items": {"type": "string"},
+            "description": "List of project bullet points — details, technologies used, and accomplishments. Each array element is one bullet."
           },
           "startYear": {
             "type": ["integer", "null"],
-            "description": "Year the project started"
+            "description": "Year the project started as a 4-digit integer. Null if no start year is stated."
           },
           "endYear": {
             "type": ["integer", "null"],
-            "description": "Year the project ended"
+            "description": "Year the project ended as a 4-digit integer. Null if the project is ongoing or no end year is stated."
           },
           "url": {
             "type": ["string", "null"],
-            "description": "Project link or repository URL"
+            "description": "Project link or repository URL, if present in the resume."
           }
         }
       }
     },
     "personalSummary": {
       "type": ["string", "null"],
-      "description": "Professional summary, profile, or objective"
+      "description": "The candidate's professional summary, profile, or objective. Preserve paragraph boundaries from the source using double newlines between paragraphs. If the source section is written as bullets, preserve each bullet as a list item rather than collapsing into prose. Do not merge multiple paragraphs into one block."
     },
     "certifications": {
       "type": "array",
-      "description": "Certifications, licenses, and professional credentials",
+      "description": "Extract all certifications, licenses, and professional credentials mentioned anywhere in the resume — from dedicated certification sections, education sections, or standalone mentions.",
       "items": {
         "type": "object",
         "properties": {
@@ -206,14 +200,14 @@
           },
           "date": {
             "type": ["string", "null"],
-            "description": "Date of certification"
+            "description": "Date of certification as written in the resume"
           }
         }
       }
     },
     "awards": {
       "type": "array",
-      "description": "Awards, honors, and recognitions",
+      "description": "Extract awards, honors, and recognitions from dedicated awards/honors sections. Only include named awards or formal recognitions — not job accomplishments from experience bullets or volunteer positions.",
       "items": {
         "type": "object",
         "properties": {
@@ -227,14 +221,14 @@
           },
           "date": {
             "type": ["string", "null"],
-            "description": "Date of award"
+            "description": "Date of award as written in the resume"
           }
         }
       }
     },
     "volunteering": {
       "type": "array",
-      "description": "Volunteer positions",
+      "description": "List of volunteer positions from dedicated volunteering, community involvement, or board membership sections. Only include genuine volunteer roles — not student clubs, extracurricular activities, sports, or workshop attendance.",
       "items": {
         "type": "object",
         "properties": {
@@ -248,42 +242,38 @@
           },
           "description": {
             "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Volunteering bullet points"
+            "items": {"type": "string"},
+            "description": "List of volunteering bullet points. Strip bullet symbols but preserve the complete visible text."
           },
           "startYear": {
             "type": ["integer", "null"],
-            "description": "Year volunteering started"
+            "description": "Year volunteering started as a 4-digit integer. Null if no start year is stated."
           },
           "endYear": {
             "type": ["integer", "null"],
-            "description": "Year volunteering ended"
+            "description": "Year volunteering ended as a 4-digit integer. Null if still volunteering or no end year is stated."
           },
           "currentlyVolunteerHere": {
             "type": ["boolean", "null"],
-            "description": "true if currently volunteering here"
+            "description": "true if currently volunteering here. false otherwise."
           }
         }
       }
     },
     "skills": {
       "type": "array",
-      "description": "List of skill categories extracted from the resume",
+      "description": "List of skill categories extracted from the resume. If the resume already groups skills under category headings (e.g. 'Tools: Git, Docker'), preserve that structure exactly.",
       "items": {
         "type": "object",
         "properties": {
           "category": {
             "type": ["string", "null"],
-            "description": "Skill category or group name"
+            "description": "Skill category or group name. FIRST check if the resume already has categories in the format 'CategoryName: Skill1, Skill2, ...' (e.g. 'Programming Languages: Python, Java'). If existing categories are found, use those exact category names. If the resume lists skills as a flat or comma-separated list without explicit category labels, use 'Skills' as the default category name. Do NOT use the section heading as a category name. Do not use a single skill name as the category."
           },
           "skills": {
             "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "List of individual skills in this category"
+            "items": {"type": "string"},
+            "description": "List of individual skills in this category. Skills should be concise keyword-style items, e.g. 'Python', 'Project Management', 'Statistical Process Control (SPC)'. Do NOT include full sentences or competency statements. Only include skills explicitly present in the resume — no guessing or inventing. Preserve original casing. Each skill must appear in exactly one category. Do not repeat a skill across categories."
           }
         }
       }

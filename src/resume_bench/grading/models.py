@@ -15,6 +15,7 @@ class SectionScore:
     field_accuracy: dict[str, float] = field(default_factory=dict)
     description_token_f1: float | None = None
     is_vacuous: bool = False
+    in_headline: bool = True
 
 
 @dataclass
@@ -29,13 +30,30 @@ class ResumeScore:
         return {k: v for k, v in self.sections.items() if not v.is_vacuous}
 
     @property
-    def macro_entity_f1(self) -> float:
-        nv = self.non_vacuous_sections
+    def headline_sections(self) -> dict[str, SectionScore]:
+        return {
+            k: v for k, v in self.sections.items()
+            if not v.is_vacuous and v.in_headline
+        }
 
-        if not nv:
+    @property
+    def macro_entity_f1(self) -> float:
+        hl = self.headline_sections
+
+        if not hl:
             return 0.0
 
-        return sum(s.f1 for s in nv.values()) / len(nv)
+        return sum(s.f1 for s in hl.values()) / len(hl)
+
+    @property
+    def basics_field_accuracy(self) -> float:
+        basics = self.sections.get("basics")
+
+        if not basics or not basics.field_accuracy:
+            return 0.0
+
+        vals = basics.field_accuracy.values()
+        return sum(vals) / len(vals) if vals else 0.0
 
 
 @dataclass

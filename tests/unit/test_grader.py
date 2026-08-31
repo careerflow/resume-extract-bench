@@ -81,3 +81,31 @@ class TestGradeSingle:
         nv = score.non_vacuous_sections
         assert "experience" not in nv
         assert "education" not in nv
+
+    def test_basics_excluded_from_headline(self):
+        gt = {
+            "basics": {"fname": "Jane", "lname": "Smith"},
+            "experience": [{"company": "Google", "position": "SWE"}],
+        }
+        pred = {
+            "basics": {"fname": "Jane", "lname": "Smith"},
+            "experience": [{"company": "Google", "position": "SWE"}],
+        }
+
+        score = grade_single(gt, pred)
+
+        assert score.sections["basics"].in_headline is False
+        assert "basics" not in score.headline_sections
+        assert score.basics_field_accuracy > 0.9
+
+    def test_failed_resume_scores_zero(self):
+        from resume_bench.grading.models import ResumeScore, SectionScore
+        from resume_bench.schema.sections import SECTIONS
+
+        failed = ResumeScore(resume_id="failed_001", completed=False)
+
+        for spec in SECTIONS:
+            failed.sections[spec.name] = SectionScore()
+
+        assert failed.macro_entity_f1 == 0.0
+        assert failed.completed is False

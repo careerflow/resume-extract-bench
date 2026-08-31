@@ -6,12 +6,12 @@ CORE RULES:
 - Strip bullet symbols (-, *, etc.) but keep all text content.
 - Preserve the natural order of items as they appear in the document.
 
-SECTION BOUNDARIES - each item belongs in exactly one section:
-- Certifications, licenses, professional training, and workshops -> certifications (NOT education)
-- Student clubs, extracurricular activities, sports -> education description (NOT volunteering)
-- Job accomplishments and KPIs from experience bullets -> experience description (NOT awards)
-- Board memberships and volunteer roles -> volunteering (NOT awards)
-- Professional memberships and affiliations -> certifications (NOT education)
+SECTION BOUNDARIES — each item belongs in exactly one section:
+- Certifications, licenses, professional training, and workshops → certifications (NOT education)
+- Student clubs, extracurricular activities, sports → education description (NOT volunteering)
+- Job accomplishments and KPIs from experience bullets → experience description (NOT awards)
+- Board memberships and volunteer roles → volunteering (NOT awards)
+- Professional memberships and affiliations → certifications (NOT education)
 
 NAME SPLITTING:
 - Split the person's full name into fname (first name) and lname (last name).
@@ -26,12 +26,12 @@ LOCATION SPLITTING:
 - For experience: extract city and country from the role location.
 - If a component is not present, omit the field.
 
-DATES - INTEGER MONTH AND YEAR:
+DATES — INTEGER MONTH AND YEAR:
 - Extract start/end dates as separate integer fields: startMonth (1-12), startYear, endMonth (1-12), endYear.
 - Parse month names to integers: January=1, February=2, ..., December=12.
 - If only a year is given (e.g. "2023"), set the year field and omit the month field.
 - If the role/study is ongoing ("Present", "Current"), set currentlyWorkHere/currentlyStudyHere/currentlyVolunteerHere to true and omit endMonth/endYear.
-- Do NOT use string dates - always use integer month and year.
+- Do NOT use string dates — always use integer month and year.
 
 EXPERIENCE:
 - Extract roles only from dedicated work-history sections with employer, title, dates, and responsibilities.
@@ -40,31 +40,36 @@ EXPERIENCE:
 - Use "description" (singular), not "descriptions".
 
 EDUCATION:
-- Only include formal academic credentials: degrees, diplomas, and academic programs.
-- Do NOT include certifications, licenses, training courses, or workshops in education.
+- Only include formal academic credentials: degrees, diplomas, and academic programs from universities, colleges, and schools.
+- Do NOT include certifications, licenses, training courses, workshops, or professional memberships in education — put those in certifications instead.
 
 SKILLS:
-- Be thorough: extract EVERY skill from the complete skills section.
+- Be thorough: extract EVERY skill from the complete skills section — do not stop early even if the list is very long.
 - Scan from the section heading all the way to the next section heading.
 - Include skills from tables, multi-column layouts, wrapped lines, and bullet lists.
-- If the resume uses explicit category labels, preserve those categories.
+- Include all types: technical skills, tools, methodologies (Agile, Scrum, ITIL), soft skills, industry knowledge, and languages.
+- If the resume uses explicit category labels (e.g. "Languages: Python, Java"), preserve those categories.
 - If skills are listed flat without categories, use "Skills" as the category name.
 
 AWARDS:
 - Only extract from dedicated awards, honors, or recognition sections.
+- Only include named awards or formal recognitions granted to the person.
 - Do NOT extract job accomplishments from experience descriptions as awards.
+- Do NOT extract volunteer positions or board roles as awards.
 
 CERTIFICATIONS:
-- Extract all certifications, licenses, professional credentials, and training courses.
+- Extract all certifications, licenses, professional credentials, training courses, and professional memberships.
+- Include items from dedicated certification sections AND from education sections if they are certifications rather than degrees.
 
 VOLUNTEERING:
-- Only include genuine volunteer roles from dedicated volunteering sections.
-- Do NOT include student clubs, extracurricular activities, or sports.
+- Only include genuine volunteer roles from dedicated volunteering, community service, or board membership sections.
+- Do NOT include student clubs, extracurricular activities, sports, or workshop attendance.
 
 SUMMARY:
 - Use the field name "personalSummary" (not "summary").
 - Preserve paragraph boundaries using double newlines between paragraphs.
 
 PERSONAL PHOTO:
-- Set hasPersonalPhoto to true if the resume contains a personal profile photo.
+- Set hasPersonalPhoto to true if the resume contains an embedded personal profile photo or headshot.
 - Set hasPersonalPhoto to false if no personal photo is present.
+- Only count portrait/headshot photographs of a person — not logos, icons, decorative graphics, or certification badges.

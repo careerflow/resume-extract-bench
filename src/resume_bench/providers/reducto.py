@@ -29,17 +29,42 @@ class ReductoProvider(Provider):
         client = Reducto(api_key=settings.reducto_api_key)
 
         try:
-            result = client.extract(
-                document_url=str(req.pdf_path),
-                schema=req.extraction_schema,
+            with open(req.pdf_path, "rb") as f:
+                upload_response = client.upload(file=f)
+
+            file_id = upload_response.file_id
+
+            result = client.extract.run(
+                input={"type": "file_id", "file_id": file_id},
+                instructions={"schema": req.extraction_schema},
             )
 
-            parsed = result.result if hasattr(result, "result") else {}
-            if isinstance(parsed, str):
-                import json
-                parsed = json.loads(parsed)
+            if hasattr(result, "result") and result.result:
+                extraction = (
+                    result.result[0]
+                    if isinstance(result.result, list)
+                    else result.result
+                )
 
-            return {"parsed": parsed}
+                if hasattr(extraction, "content"):
+                    data = extraction.content
+                elif hasattr(extraction, "model_dump"):
+                    data = extraction.model_dump()
+                else:
+                    data = extraction
+            else:
+                data = result
+
+            if hasattr(data, "model_dump"):
+                data = data.model_dump()
+            elif hasattr(data, "dict"):
+                data = data.dict()
+            elif not isinstance(data, dict):
+                import json
+
+                data = json.loads(str(data))
+
+            return {"parsed": data}
 
         except Exception as e:
             if "rate" in str(e).lower() or "429" in str(e):

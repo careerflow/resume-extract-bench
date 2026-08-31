@@ -69,12 +69,14 @@ def _run_single(
 
     try:
         raw = provider.extract(req)
+        canonical = provider.to_canonical(raw)
         latency = (time.monotonic_ns() // 1_000_000) - start_ms
 
         record = RunRecord(
             resume_id=case.resume_id,
             pipeline_name=spec.pipeline_name,
             raw_output=raw,
+            output=canonical,
             latency_ms=latency,
             started_at=started,
             cost_usd=provider.estimate_cost(raw),

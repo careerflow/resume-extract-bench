@@ -27,9 +27,9 @@ def _load_pipeline_results(pipeline_name: str, split: str) -> dict[str, dict]:
         if record.get("error"):
             continue
 
-        raw = record.get("raw_output")
-        if raw:
-            results[resume_id] = raw
+        canonical = record.get("output") or record.get("raw_output")
+        if canonical:
+            results[resume_id] = canonical
 
     return results
 
@@ -51,6 +51,7 @@ def grade_single(
             pred_dict = pred_data if isinstance(pred_data, dict) else {}
 
             section_score = score_singleton(gt_dict, pred_dict, spec.key_fields, cfg)
+            section_score.in_headline = False
 
         elif spec.kind == SectionKind.FLAT_LIST:
             gt_list = gt_data if isinstance(gt_data, list) else []
@@ -121,14 +122,22 @@ def grade_pipelines(
 
             if pred is None:
                 errors += 1
+
+                failed_score = ResumeScore(resume_id=resume_id, completed=False)
+                for spec in SECTIONS:
+                    failed_score.sections[spec.name] = SectionScore()
+                scores.append(failed_score)
                 continue
 
             resume_score = grade_single(gt, pred, cfg)
             resume_score.resume_id = resume_id
             scores.append(resume_score)
 
-        macro_f1s = [s.macro_entity_f1 for s in scores if s.completed]
-        avg_f1 = sum(macro_f1s) / len(macro_f1s) if macro_f1s else 0.0
+        all_f1s = [s.macro_entity_f1 for s in scores]
+        avg_f1 = sum(all_f1s) / len(all_f1s) if all_f1s else 0.0
+
+        completed_f1s = [s.macro_entity_f1 for s in scores if s.completed]
+        avg_completed_f1 = sum(completed_f1s) / len(completed_f1s) if completed_f1s else 0.0
 
         section_f1s = {}
         for spec in SECTIONS:
@@ -165,13 +174,16 @@ def grade_pipelines(
             with open(grade_path, "w") as f:
                 json.dump(grade_data, f, indent=2)
 
+        completed_count = sum(1 for s in scores if s.completed)
+
         reports[name] = {
             "resume_entity_f1": round(avg_f1, 4),
+            "completed_only_f1": round(avg_completed_f1, 4),
             "section_f1": section_f1s,
             "total_resumes": len(gt_by_id),
-            "graded": len(scores),
+            "completed": completed_count,
             "errors": errors,
-            "completion_rate": len(scores) / len(gt_by_id) if gt_by_id else 0.0,
+            "completion_rate": completed_count / len(gt_by_id) if gt_by_id else 0.0,
         }
 
     return reports

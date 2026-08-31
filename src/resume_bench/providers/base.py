@@ -39,6 +39,7 @@ class RunRecord(BaseModel):
     resume_id: str
     pipeline_name: str
     raw_output: dict[str, Any] | None = None
+    output: dict[str, Any] | None = None
     error: str | None = None
     error_class: str | None = None
     latency_ms: int = 0

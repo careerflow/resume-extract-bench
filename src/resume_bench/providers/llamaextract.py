@@ -26,25 +26,37 @@ class LlamaExtractProvider(Provider):
 
         from resume_bench.settings import settings
 
-        client = LlamaCloud(token=settings.llama_cloud_api_key)
-        tier = self.spec.config.get("tier", "agentic")
+        client = LlamaCloud(api_key=settings.llama_cloud_api_key)
+        tier = self.spec.config.get("tier", "agentic_plus")
 
         try:
-            extraction = client.extraction.create_extraction(
-                schema=req.extraction_schema,
-                input_files=[str(req.pdf_path)],
-                config={"tier": tier},
+            with open(req.pdf_path, "rb") as f:
+                upload_response = client.files.create(file=f, purpose="extract")
+
+            file_id = upload_response.id
+
+            job = client.extract.run(
+                file_input=file_id,
+                configuration={
+                    "data_schema": req.extraction_schema,
+                    "tier": tier,
+                    "confidence_scores": True,
+                    "system_prompt": req.system_prompt,
+                },
             )
 
-            if extraction.results and len(extraction.results) > 0:
-                result = extraction.results[0]
-                return {
-                    "parsed": result.data if hasattr(result, "data") else {},
-                    "tier": tier,
-                    "extraction_id": extraction.id if hasattr(extraction, "id") else None,
-                }
+            data = job.extract_result if job.extract_result else {}
 
-            return {"parsed": {}, "tier": tier, "error": "no results returned"}
+            if hasattr(data, "model_dump"):
+                data = data.model_dump()
+            elif hasattr(data, "dict"):
+                data = data.dict()
+            elif not isinstance(data, dict):
+                import json
+
+                data = json.loads(str(data)) if data else {}
+
+            return {"parsed": data, "tier": tier}
 
         except Exception as e:
             if "rate" in str(e).lower() or "429" in str(e):
