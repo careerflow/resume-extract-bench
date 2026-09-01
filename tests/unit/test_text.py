@@ -1,5 +1,4 @@
-import pytest
-from resume_bench.grading.text import normalize_text, field_similarity, token_f1
+from resume_bench.grading.text import field_similarity, normalize_text, token_f1
 
 
 class TestNormalizeText:

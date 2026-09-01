@@ -16,12 +16,12 @@ console = Console()
 def _collect_graded_summaries(split: str, pipeline_names: list[str] | None = None) -> dict[str, dict]:
     """Collect graded summary data from output directories."""
     base = settings.output_dir
-    summaries = {}
 
     if not base.exists():
-        return summaries
+        return {}
 
     candidates = []
+
     if pipeline_names:
         candidates = pipeline_names
     else:
@@ -29,17 +29,24 @@ def _collect_graded_summaries(split: str, pipeline_names: list[str] | None = Non
             if p.is_dir() and (p / split / "grades").exists():
                 candidates.append(p.name)
 
+    summaries = {}
+
     for name in candidates:
-        grades_dir = base / name / split / "grades"
+        pipeline_dir = base / name / split
+        grades_dir = pipeline_dir / "grades"
+
         if not grades_dir.exists():
             continue
 
         grade_files = list(grades_dir.glob("*.grade.json"))
+
         if not grade_files:
             continue
 
         macro_f1s = []
         section_f1s: dict[str, list[float]] = {}
+        section_omission: dict[str, list[float]] = {}
+        section_hallucination: dict[str, list[float]] = {}
 
         for gf in grade_files:
             with open(gf) as f:
@@ -50,17 +57,63 @@ def _collect_graded_summaries(split: str, pipeline_names: list[str] | None = Non
             for sec_name, sec_data in data.get("sections", {}).items():
                 if not sec_data.get("is_vacuous", False):
                     section_f1s.setdefault(sec_name, []).append(sec_data.get("f1", 0.0))
+                    section_omission.setdefault(sec_name, []).append(sec_data.get("omission_rate", 0.0))
+                    section_hallucination.setdefault(sec_name, []).append(sec_data.get("hallucination_rate", 0.0))
 
         avg_f1 = sum(macro_f1s) / len(macro_f1s) if macro_f1s else 0.0
 
         avg_sections = {}
+        avg_omission = {}
+        avg_hallucination = {}
+
         for sec_name, vals in section_f1s.items():
             avg_sections[sec_name] = round(sum(vals) / len(vals), 4)
+
+        for sec_name, vals in section_omission.items():
+            avg_omission[sec_name] = round(sum(vals) / len(vals), 4)
+
+        for sec_name, vals in section_hallucination.items():
+            avg_hallucination[sec_name] = round(sum(vals) / len(vals), 4)
+
+        result_files = list(pipeline_dir.glob("*.result.json"))
+        total_latency_ms = 0
+        total_cost = 0.0
+        completed = 0
+        errors = 0
+        cost_count = 0
+
+        for rf in result_files:
+            with open(rf) as f:
+                rdata = json.load(f)
+
+            if rdata.get("error"):
+                errors += 1
+            else:
+                completed += 1
+
+            total_latency_ms += rdata.get("latency_ms", 0)
+
+            cost = rdata.get("cost_usd")
+            if cost is not None:
+                total_cost += cost
+                cost_count += 1
+
+        total_resumes = completed + errors
+        avg_latency_s = (total_latency_ms / total_resumes / 1000) if total_resumes else 0.0
+        avg_cost = (total_cost / cost_count) if cost_count else None
 
         summaries[name] = {
             "resume_entity_f1": round(avg_f1, 4),
             "section_f1": avg_sections,
+            "section_omission": avg_omission,
+            "section_hallucination": avg_hallucination,
             "graded": len(grade_files),
+            "completed": completed,
+            "errors": errors,
+            "completion_rate": round(completed / total_resumes, 4) if total_resumes else 0.0,
+            "avg_latency_s": round(avg_latency_s, 2),
+            "avg_cost_usd": round(avg_cost, 5) if avg_cost is not None else None,
+            "total_cost_usd": round(total_cost, 4) if cost_count else None,
         }
 
     return summaries
@@ -77,25 +130,33 @@ def print_leaderboard(split: str = "test") -> None:
     ranked = sorted(summaries.items(), key=lambda x: x[1]["resume_entity_f1"], reverse=True)
 
     table = Table(title=f"ResumeExtractBench Leaderboard ({split})")
-    table.add_column("Rank", justify="right", style="bold")
+    table.add_column("#", justify="right", style="bold")
     table.add_column("Pipeline")
     table.add_column("Entity F1", justify="right")
+    table.add_column("Basics", justify="right")
+    table.add_column("Done", justify="right")
+    table.add_column("Latency", justify="right")
+    table.add_column("$/Resume", justify="right")
     table.add_column("Resumes", justify="right")
 
-    for spec in SECTIONS:
-        table.add_column(spec.name, justify="right")
-
     for rank, (name, data) in enumerate(ranked, 1):
+        completion = f"{data['completion_rate']:.0%}"
+        latency = f"{data['avg_latency_s']:.1f}s"
+        cost = f"${data['avg_cost_usd']:.4f}" if data['avg_cost_usd'] is not None else "-"
+
+        basics_val = data["section_f1"].get("basics")
+        basics = f"{basics_val:.3f}" if basics_val is not None else "-"
+
         row = [
             str(rank),
             name,
             f"{data['resume_entity_f1']:.4f}",
+            basics,
+            completion,
+            latency,
+            cost,
             str(data["graded"]),
         ]
-
-        for spec in SECTIONS:
-            val = data["section_f1"].get(spec.name)
-            row.append(f"{val:.3f}" if val is not None else "-")
 
         table.add_row(*row)
 
@@ -116,7 +177,7 @@ def generate_reports(
     ranked = sorted(summaries.items(), key=lambda x: x[1]["resume_entity_f1"], reverse=True)
 
     csv_path = output_path / "leaderboard.csv"
-    fieldnames = ["rank", "pipeline", "entity_f1", "graded"]
+    fieldnames = ["rank", "pipeline", "entity_f1", "completion_rate", "avg_latency_s", "avg_cost_usd", "graded"]
     fieldnames += [spec.name for spec in SECTIONS]
 
     with open(csv_path, "w", newline="") as f:
@@ -128,6 +189,9 @@ def generate_reports(
                 "rank": rank,
                 "pipeline": name,
                 "entity_f1": f"{data['resume_entity_f1']:.4f}",
+                "completion_rate": f"{data['completion_rate']:.4f}",
+                "avg_latency_s": f"{data['avg_latency_s']:.2f}",
+                "avg_cost_usd": f"{data['avg_cost_usd']:.5f}" if data['avg_cost_usd'] is not None else "",
                 "graded": data["graded"],
             }
 
@@ -138,6 +202,7 @@ def generate_reports(
             writer.writerow(row)
 
     summary_path = output_path / "summary.json"
+
     with open(summary_path, "w") as f:
         json.dump(
             {"split": split, "pipelines": dict(ranked)},
@@ -162,17 +227,23 @@ def _write_html_report(
     header_cells = "".join(f"<th>{s}</th>" for s in section_names)
 
     rows_html = ""
+
     for rank, (name, data) in enumerate(ranked, 1):
         section_cells = ""
+
         for s in section_names:
             val = data["section_f1"].get(s)
             section_cells += f"<td>{val:.3f}</td>" if val is not None else "<td>-</td>"
+
+        cost = f"${data['avg_cost_usd']:.4f}" if data['avg_cost_usd'] is not None else "-"
 
         rows_html += f"""<tr>
             <td>{rank}</td>
             <td>{name}</td>
             <td><strong>{data['resume_entity_f1']:.4f}</strong></td>
-            <td>{data['graded']}</td>
+            <td>{data['completion_rate']:.0%}</td>
+            <td>{data['avg_latency_s']:.1f}s</td>
+            <td>{cost}</td>
             {section_cells}
         </tr>\n"""
 
@@ -201,7 +272,9 @@ def _write_html_report(
                 <th>Rank</th>
                 <th>Pipeline</th>
                 <th>Entity F1</th>
-                <th>Resumes</th>
+                <th>Completion</th>
+                <th>Latency</th>
+                <th>Cost/Resume</th>
                 {header_cells}
             </tr>
         </thead>

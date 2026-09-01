@@ -147,6 +147,81 @@ def leaderboard(
 
 
 @app.command()
+def grade_file(
+    predictions_path: Path = typer.Argument(..., help="JSONL file with predictions"),
+    split: str = typer.Option("test", help="Dataset split for ground truth"),
+    threshold: float = typer.Option(0.5, help="Alignment similarity threshold"),
+):
+    """Grade a predictions JSONL file against ground truth.
+
+    Each line should be: {"resume_id": "...", "prediction": {...}}
+    """
+    import json
+
+    from resume_bench.dataset.loader import load_split
+    from resume_bench.grading.grader import grade_single
+    from resume_bench.grading.models import GradingConfig
+
+    cases = load_split(split)
+    gt_by_id = {c.resume_id: c.ground_truth for c in cases}
+    cfg = GradingConfig(threshold=threshold)
+
+    predictions = {}
+
+    with open(predictions_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+
+            record = json.loads(line)
+            rid = record["resume_id"]
+            pred = record.get("prediction", record.get("output", {}))
+            predictions[rid] = pred
+
+    scores = []
+
+    for rid, gt in gt_by_id.items():
+        pred = predictions.get(rid)
+
+        if pred is None:
+            console.print(f"  [yellow]Missing prediction for {rid}[/yellow]")
+            continue
+
+        score = grade_single(gt, pred, cfg)
+        score.resume_id = rid
+        scores.append(score)
+
+    if not scores:
+        console.print("[red]No predictions matched any ground truth resume IDs.[/red]")
+        return
+
+    avg_f1 = sum(s.macro_entity_f1 for s in scores) / len(scores)
+    avg_basics = sum(s.basics_field_accuracy for s in scores) / len(scores)
+
+    table = Table(title=f"Grade Results ({len(scores)} resumes)")
+    table.add_column("Metric", style="bold")
+    table.add_column("Value", justify="right")
+
+    table.add_row("Headline Entity F1", f"{avg_f1:.4f}")
+    table.add_row("Basics Accuracy", f"{avg_basics:.4f}")
+    table.add_row("Resumes Graded", f"{len(scores)} / {len(gt_by_id)}")
+
+    section_f1s: dict[str, list[float]] = {}
+
+    for s in scores:
+        for name, sec in s.sections.items():
+            if not sec.is_vacuous:
+                section_f1s.setdefault(name, []).append(sec.f1)
+
+    for name, vals in sorted(section_f1s.items(), key=lambda x: -sum(x[1]) / len(x[1])):
+        avg = sum(vals) / len(vals)
+        table.add_row(f"  {name}", f"{avg:.4f}")
+
+    console.print(table)
+
+
+@app.command()
 def validate(
     dataset_path: Path = typer.Argument(..., help="Path to dataset JSONL file"),
 ):
