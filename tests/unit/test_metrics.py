@@ -1,6 +1,4 @@
-import pytest
-from resume_bench.grading.metrics import score_singleton, score_flat_list, score_entity_list
-from resume_bench.grading.models import GradingConfig
+from resume_bench.grading.metrics import score_entity_list, score_flat_list, score_singleton
 
 
 class TestScoreSingleton:

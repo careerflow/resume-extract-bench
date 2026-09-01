@@ -15,6 +15,18 @@ PIPELINES: list[PipelineSpec] = [
         config={"tier": "agentic"},
     ),
     PipelineSpec(
+        pipeline_name="llamaextract_cost_effective",
+        provider_name="llamaextract",
+        input_mode=InputMode.PDF,
+        config={"tier": "cost_effective"},
+    ),
+    PipelineSpec(
+        pipeline_name="llamaextract_turbo",
+        provider_name="llamaextract",
+        input_mode=InputMode.PDF,
+        config={"tier": "turbo"},
+    ),
+    PipelineSpec(
         pipeline_name="reducto_extract",
         provider_name="reducto",
         input_mode=InputMode.PDF,
@@ -36,6 +48,12 @@ PIPELINES: list[PipelineSpec] = [
         provider_name="openai",
         input_mode=InputMode.TEXT,
         config={"model": "gpt-5.6-sol"},
+    ),
+    PipelineSpec(
+        pipeline_name="anthropic_claude-haiku-4.5_text",
+        provider_name="anthropic",
+        input_mode=InputMode.TEXT,
+        config={"model": "claude-haiku-4-5-20251001"},
     ),
     PipelineSpec(
         pipeline_name="anthropic_claude-sonnet-4_text",
@@ -60,11 +78,5 @@ PIPELINES: list[PipelineSpec] = [
         provider_name="google",
         input_mode=InputMode.TEXT,
         config={"model": "gemini-2.5-flash"},
-    ),
-    PipelineSpec(
-        pipeline_name="precomputed",
-        provider_name="precomputed",
-        input_mode=InputMode.PDF,
-        config={"results_dir": ""},
     ),
 ]

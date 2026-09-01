@@ -12,7 +12,6 @@ from pydantic import BaseModel
 class InputMode(str, Enum):
     PDF = "pdf"
     TEXT = "text"
-    IMAGES = "images"
 
 
 class PipelineSpec(BaseModel):
@@ -28,7 +27,6 @@ class ExtractionRequest(BaseModel):
     resume_id: str
     pdf_path: Path
     text: str | None = None
-    images: list[Path] | None = None
     extraction_schema: dict[str, Any]
     system_prompt: str
 
@@ -45,7 +43,6 @@ class RunRecord(BaseModel):
     latency_ms: int = 0
     cost_usd: float | None = None
     started_at: datetime | None = None
-    provider_metadata: dict[str, Any] = {}
     cached: bool = False
 
     model_config = {"arbitrary_types_allowed": True}

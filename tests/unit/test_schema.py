@@ -1,5 +1,4 @@
-import pytest
-from resume_bench.schema import get_schema, RESUME_SCHEMA
+from resume_bench.schema import RESUME_SCHEMA, get_schema
 from resume_bench.schema.sections import SECTIONS, SectionKind
 
 
