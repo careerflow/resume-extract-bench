@@ -47,8 +47,8 @@ Each line of the JSONL file should be:
 | openai_gpt-4.1_text | OpenAI | Text | |
 | openai_gpt-5.6-sol_text | OpenAI | Text | Reasoning model |
 | anthropic_claude-haiku-4.5_text | Anthropic | Text | |
-| anthropic_claude-sonnet-4_text | Anthropic | Text | |
-| anthropic_claude-opus-4_text | Anthropic | Text | |
+| anthropic_claude-sonnet-5_text | Anthropic | Text | |
+| anthropic_claude-opus-5_text | Anthropic | Text | |
 | google_gemini-2.5-pro_text | Google | Text | |
 | google_gemini-2.5-flash_text | Google | Text | |
 
