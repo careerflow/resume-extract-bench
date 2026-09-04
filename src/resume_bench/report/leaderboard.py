@@ -7,7 +7,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
-from resume_bench.schema.sections import SECTIONS
+from resume_bench.schema.sections import get_sections
 from resume_bench.settings import settings
 
 console = Console()
@@ -82,7 +82,7 @@ def print_leaderboard(split: str = "test") -> None:
     table.add_column("Entity F1", justify="right")
     table.add_column("Resumes", justify="right")
 
-    for spec in SECTIONS:
+    for spec in get_sections():
         table.add_column(spec.name, justify="right")
 
     for rank, (name, data) in enumerate(ranked, 1):
@@ -93,7 +93,7 @@ def print_leaderboard(split: str = "test") -> None:
             str(data["graded"]),
         ]
 
-        for spec in SECTIONS:
+        for spec in get_sections():
             val = data["section_f1"].get(spec.name)
             row.append(f"{val:.3f}" if val is not None else "-")
 
@@ -117,7 +117,7 @@ def generate_reports(
 
     csv_path = output_path / "leaderboard.csv"
     fieldnames = ["rank", "pipeline", "entity_f1", "graded"]
-    fieldnames += [spec.name for spec in SECTIONS]
+    fieldnames += [spec.name for spec in get_sections()]
 
     with open(csv_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -131,7 +131,7 @@ def generate_reports(
                 "graded": data["graded"],
             }
 
-            for spec in SECTIONS:
+            for spec in get_sections():
                 val = data["section_f1"].get(spec.name)
                 row[spec.name] = f"{val:.4f}" if val is not None else ""
 
@@ -157,7 +157,7 @@ def _write_html_report(
     html_path: Path,
 ) -> None:
     """Write a simple HTML leaderboard."""
-    section_names = [spec.name for spec in SECTIONS]
+    section_names = [spec.name for spec in get_sections()]
 
     header_cells = "".join(f"<th>{s}</th>" for s in section_names)
 

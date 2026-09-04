@@ -6,7 +6,7 @@ from typing import Any
 from resume_bench.dataset.loader import load_split
 from resume_bench.grading.metrics import score_entity_list, score_flat_list, score_singleton
 from resume_bench.grading.models import GradingConfig, ResumeScore, SectionScore
-from resume_bench.schema.sections import SECTIONS, SectionKind
+from resume_bench.schema.sections import SectionKind, get_sections
 from resume_bench.settings import settings
 
 
@@ -42,7 +42,7 @@ def grade_single(
     """Grade a single resume prediction against ground truth."""
     score = ResumeScore()
 
-    for spec in SECTIONS:
+    for spec in get_sections():
         gt_data = ground_truth.get(spec.name)
         pred_data = prediction.get(spec.name)
 
@@ -124,7 +124,7 @@ def grade_pipelines(
                 errors += 1
 
                 failed_score = ResumeScore(resume_id=resume_id, completed=False)
-                for spec in SECTIONS:
+                for spec in get_sections():
                     failed_score.sections[spec.name] = SectionScore()
                 scores.append(failed_score)
                 continue
@@ -140,7 +140,7 @@ def grade_pipelines(
         avg_completed_f1 = sum(completed_f1s) / len(completed_f1s) if completed_f1s else 0.0
 
         section_f1s = {}
-        for spec in SECTIONS:
+        for spec in get_sections():
             vals = [
                 s.sections[spec.name].f1
                 for s in scores
