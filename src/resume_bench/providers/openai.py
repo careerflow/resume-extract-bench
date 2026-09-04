@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 from typing import Any
 
@@ -12,6 +13,32 @@ from resume_bench.providers.base import (
     ProviderTransientError,
 )
 from resume_bench.providers.registry import register_provider
+
+# Model prefixes that support Structured Outputs (strict JSON Schema mode).
+_STRUCTURED_OUTPUT_PREFIXES = ("gpt-5.6", "gpt-5.5", "gpt-5.4")
+
+
+def _make_strict_schema(schema: dict) -> dict:
+    """Convert a JSON Schema to OpenAI Structured Outputs strict format.
+
+    Recursively adds ``additionalProperties: false`` and ``required`` to
+    every object node, as required by OpenAI's strict JSON Schema mode.
+    """
+    schema = copy.deepcopy(schema)
+
+    def _fix(node: Any) -> Any:
+        if not isinstance(node, dict):
+            return node
+        if node.get("type") == "object" and "properties" in node:
+            node["additionalProperties"] = False
+            node["required"] = list(node["properties"].keys())
+            for prop in node["properties"].values():
+                _fix(prop)
+        if node.get("type") == "array" and "items" in node:
+            _fix(node["items"])
+        return node
+
+    return _fix(schema)
 
 
 @register_provider("openai")
@@ -43,13 +70,30 @@ class OpenAIProvider(Provider):
             },
         ]
 
+        use_structured = any(model.startswith(p) for p in _STRUCTURED_OUTPUT_PREFIXES)
+
         try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=0,
-                response_format={"type": "json_object"},
-            )
+            if use_structured:
+                strict_schema = _make_strict_schema(req.extraction_schema)
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    response_format={
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "resume_extraction",
+                            "strict": True,
+                            "schema": strict_schema,
+                        },
+                    },
+                )
+            else:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=0,
+                    response_format={"type": "json_object"},
+                )
 
             content = response.choices[0].message.content or "{}"
 
