@@ -31,28 +31,60 @@ class AnthropicProvider(Provider):
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
         model = self.spec.config.get("model", "claude-sonnet-4-20250514")
 
-        try:
-            response = client.messages.create(
-                model=model,
-                max_tokens=8192,
-                system=req.system_prompt,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": (
-                            f"Extract structured data from this resume according to the schema.\n\n"
-                            f"Schema:\n```json\n{json.dumps(req.extraction_schema, indent=2)}\n```\n\n"
-                            f"Resume text:\n{req.text}\n\n"
-                            f"Respond with only valid JSON matching the schema."
-                        ),
-                    },
-                ],
-            )
+        tool_def = {
+            "name": "extract_resume",
+            "description": "Extract structured resume data",
+            "input_schema": req.extraction_schema,
+        }
 
-            content = response.content[0].text if response.content else "{}"
+        prompt = (
+            f"Extract structured data from this resume according to the schema.\n\n"
+            f"Schema:\n```json\n{json.dumps(req.extraction_schema, indent=2)}\n```\n\n"
+            f"Resume text:\n{req.text}"
+        )
+
+        create_kwargs: dict[str, Any] = dict(
+            model=model,
+            max_tokens=8192,
+            system=req.system_prompt,
+            tools=[tool_def],
+            tool_choice={"type": "tool", "name": "extract_resume"},
+            messages=[{"role": "user", "content": prompt}],
+        )
+        # claude-opus-4-8 and newer models deprecate the temperature parameter
+        if "4-8" not in model and "5" not in model:
+            create_kwargs["temperature"] = 0
+
+        try:
+            response = client.messages.create(**create_kwargs)
+
+            # Primary path: extract the structured tool_use input
+            for block in response.content:
+                if block.type == "tool_use":
+                    parsed = block.input if isinstance(block.input, dict) else {}
+                    return {
+                        "parsed": parsed,
+                        "model": model,
+                        "usage": {
+                            "input_tokens": response.usage.input_tokens,
+                            "output_tokens": response.usage.output_tokens,
+                        },
+                    }
+
+            # Fallback: if no tool_use block, try raw text content
+            for block in response.content:
+                if block.type == "text":
+                    return {
+                        "parsed": parse_json_response(block.text),
+                        "model": model,
+                        "usage": {
+                            "input_tokens": response.usage.input_tokens,
+                            "output_tokens": response.usage.output_tokens,
+                        },
+                    }
 
             return {
-                "parsed": parse_json_response(content),
+                "parsed": {},
                 "model": model,
                 "usage": {
                     "input_tokens": response.usage.input_tokens,

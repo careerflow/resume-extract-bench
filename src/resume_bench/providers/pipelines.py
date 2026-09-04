@@ -67,4 +67,71 @@ PIPELINES: list[PipelineSpec] = [
         input_mode=InputMode.PDF,
         config={"results_dir": ""},
     ),
+    # OpenRouter models
+    PipelineSpec(
+        pipeline_name="openrouter_qwen38_flash",
+        provider_name="openrouter",
+        input_mode=InputMode.TEXT,
+        config={"model": "qwen/qwen3.8-flash"},
+    ),
+    PipelineSpec(
+        pipeline_name="openrouter_qwen38_27b",
+        provider_name="openrouter",
+        input_mode=InputMode.TEXT,
+        config={"model": "qwen/qwen3.8-27b"},
+    ),
+    PipelineSpec(
+        pipeline_name="openrouter_qwen35_35b",
+        provider_name="openrouter",
+        input_mode=InputMode.TEXT,
+        config={"model": "qwen/qwen3.5-35b-a3b"},
+    ),
+    PipelineSpec(
+        pipeline_name="openrouter_qwen35_9b",
+        provider_name="openrouter",
+        input_mode=InputMode.TEXT,
+        config={"model": "qwen/qwen3.5-9b"},
+    ),
+    PipelineSpec(
+        pipeline_name="openrouter_kimi_k3",
+        provider_name="openrouter",
+        input_mode=InputMode.TEXT,
+        config={"model": "moonshotai/kimi-k3"},
+    ),
+    PipelineSpec(
+        pipeline_name="openrouter_glm53_flash",
+        provider_name="openrouter",
+        input_mode=InputMode.TEXT,
+        config={"model": "z-ai/glm-5.3-flash"},
+    ),
+    PipelineSpec(
+        pipeline_name="openrouter_gemini35_flash",
+        provider_name="openrouter",
+        input_mode=InputMode.TEXT,
+        config={"model": "google/gemini-3.5-flash"},
+    ),
+    PipelineSpec(
+        pipeline_name="openrouter_gemma4_26b",
+        provider_name="openrouter",
+        input_mode=InputMode.TEXT,
+        config={"model": "google/gemma-4-26b-a4b-it"},
+    ),
+    PipelineSpec(
+        pipeline_name="openrouter_internvl35_14b",
+        provider_name="openrouter",
+        input_mode=InputMode.TEXT,
+        config={"model": "opengvlab/internvl3-14b"},
+    ),
+    PipelineSpec(
+        pipeline_name="openrouter_kimi_vl_a3b",
+        provider_name="openrouter",
+        input_mode=InputMode.TEXT,
+        config={"model": "moonshotai/kimi-vl-a3b-thinking"},
+    ),
+    PipelineSpec(
+        pipeline_name="openrouter_minicpm_v45",
+        provider_name="openrouter",
+        input_mode=InputMode.TEXT,
+        config={"model": "openbmb/minicpm-v-4.5"},
+    ),
 ]
