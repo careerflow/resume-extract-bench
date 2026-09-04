@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     anthropic_api_key: str = ""
     google_api_key: str = ""
+    openrouter_api_key: str = ""
 
     careerflow_api_key: str = ""
     careerflow_api_url: str = ""
