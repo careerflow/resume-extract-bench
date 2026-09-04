@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     output_dir: Path = Path("./output")
     concurrency: int = 4
     retries: int = 2
+    use_trimmed_schema: bool = True
 
     llama_cloud_api_key: str = ""
     reducto_api_key: str = ""
