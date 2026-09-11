@@ -1,6 +1,4 @@
-import pytest
 from resume_bench.grading.grader import grade_single
-from resume_bench.grading.models import GradingConfig
 
 
 class TestGradeSingle:

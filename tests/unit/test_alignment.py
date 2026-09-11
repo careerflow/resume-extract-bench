@@ -1,4 +1,3 @@
-import pytest
 from resume_bench.grading.alignment import align_entities
 
 

@@ -29,7 +29,7 @@ class AnthropicProvider(Provider):
         from resume_bench.settings import settings
 
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-        model = self.spec.config.get("model", "claude-sonnet-4-20250514")
+        model = self.spec.config.get("model", "claude-sonnet-5")
 
         try:
             response = client.messages.create(
@@ -49,7 +49,8 @@ class AnthropicProvider(Provider):
                 ],
             )
 
-            content = response.content[0].text if response.content else "{}"
+            text_blocks = [b for b in response.content if b.type == "text"]
+            content = text_blocks[0].text if text_blocks else "{}"
 
             return {
                 "parsed": parse_json_response(content),
@@ -76,8 +77,9 @@ class AnthropicProvider(Provider):
         model = raw.get("model", "")
 
         rates = {
-            "claude-sonnet-4-20250514": (3.00, 15.00),
-            "claude-opus-4-20250514": (15.00, 75.00),
+            "claude-sonnet-5": (3.00, 15.00),
+            "claude-opus-5": (15.00, 75.00),
+            "claude-haiku-4-5-20251001": (0.80, 4.00),
         }
         input_rate, output_rate = rates.get(model, (3.00, 15.00))
 
