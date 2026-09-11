@@ -11,12 +11,14 @@ class Settings(BaseSettings):
     output_dir: Path = Path("./output")
     concurrency: int = 4
     retries: int = 2
+    use_trimmed_schema: bool = True
 
     llama_cloud_api_key: str = ""
     reducto_api_key: str = ""
     openai_api_key: str = ""
     anthropic_api_key: str = ""
     google_api_key: str = ""
+    openrouter_api_key: str = ""
 
     careerflow_api_key: str = ""
     careerflow_api_url: str = ""

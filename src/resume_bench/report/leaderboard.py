@@ -7,7 +7,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
-from resume_bench.schema.sections import SECTIONS
+from resume_bench.schema.sections import get_sections
 from resume_bench.settings import settings
 
 console = Console()
@@ -139,6 +139,9 @@ def print_leaderboard(split: str = "test") -> None:
     table.add_column("$/Resume", justify="right")
     table.add_column("Resumes", justify="right")
 
+    for spec in get_sections():
+        table.add_column(spec.name, justify="right")
+
     for rank, (name, data) in enumerate(ranked, 1):
         completion = f"{data['completion_rate']:.0%}"
         latency = f"{data['avg_latency_s']:.1f}s"
@@ -157,6 +160,10 @@ def print_leaderboard(split: str = "test") -> None:
             cost,
             str(data["graded"]),
         ]
+
+        for spec in get_sections():
+            val = data["section_f1"].get(spec.name)
+            row.append(f"{val:.3f}" if val is not None else "-")
 
         table.add_row(*row)
 
@@ -178,7 +185,7 @@ def generate_reports(
 
     csv_path = output_path / "leaderboard.csv"
     fieldnames = ["rank", "pipeline", "entity_f1", "completion_rate", "avg_latency_s", "avg_cost_usd", "graded"]
-    fieldnames += [spec.name for spec in SECTIONS]
+    fieldnames += [spec.name for spec in get_sections()]
 
     with open(csv_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -195,7 +202,7 @@ def generate_reports(
                 "graded": data["graded"],
             }
 
-            for spec in SECTIONS:
+            for spec in get_sections():
                 val = data["section_f1"].get(spec.name)
                 row[spec.name] = f"{val:.4f}" if val is not None else ""
 
@@ -222,7 +229,7 @@ def _write_html_report(
     html_path: Path,
 ) -> None:
     """Write a simple HTML leaderboard."""
-    section_names = [spec.name for spec in SECTIONS]
+    section_names = [spec.name for spec in get_sections()]
 
     header_cells = "".join(f"<th>{s}</th>" for s in section_names)
 
