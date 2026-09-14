@@ -7,7 +7,7 @@ from typing import Any
 from resume_bench.dataset.models import TestCase
 from resume_bench.settings import settings
 
-DATASET_REPO = "careerflow/resume-extract-bench"
+DATASET_REPO = "careerflow/ResumeExtractBench"
 
 
 def download_dataset(split: str = "all", revision: str = "main") -> Path:
