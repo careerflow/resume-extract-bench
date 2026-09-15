@@ -12,11 +12,12 @@ class TestScoreSingleton:
         assert score.f1 == 1.0
 
     def test_partial_match(self):
-        gt = {"fname": "John", "lname": "Doe", "email": "john@test.com"}
-        pred = {"fname": "John", "lname": "Doe", "email": ""}
+        gt = {"fname": "John", "lname": "Doe", "email": "john@test.com", "phone": "555-1234"}
+        pred = {"fname": "John", "lname": "Doe", "email": "", "phone": "555-1234"}
 
-        score = score_singleton(gt, pred, ("fname", "lname", "email"))
+        score = score_singleton(gt, pred, ("fname", "lname", "email", "phone"))
 
+        # 3 fields after join: name=1.0, email=0.0, phone=1.0 → avg ≈ 0.667
         assert 0.5 < score.f1 < 1.0
 
     def test_both_empty_is_vacuous(self):
@@ -50,8 +51,22 @@ class TestScoreSingleton:
 
         score = score_singleton(gt, pred, ("fname", "lname"))
 
-        assert score.field_accuracy["fname"] == 1.0
-        assert score.field_accuracy["lname"] < 1.0
+        # fname + lname are joined into a single "name" field
+        assert "name" in score.field_accuracy
+        assert "fname" not in score.field_accuracy
+        # "John Doe" vs "John Smith" — partial match
+        assert score.field_accuracy["name"] < 1.0
+
+    def test_name_join_different_split(self):
+        """Models that split the name differently should not be penalised."""
+        gt = {"fname": "Jean Marie", "lname": "Schiraldi"}
+        pred = {"fname": "Jean", "lname": "Marie Schiraldi"}
+
+        score = score_singleton(gt, pred, ("fname", "lname"))
+
+        # Both produce "Jean Marie Schiraldi" after joining
+        assert score.field_accuracy["name"] == 1.0
+        assert score.f1 == 1.0
 
 
 class TestScoreFlatList:

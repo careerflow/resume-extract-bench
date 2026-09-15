@@ -7,6 +7,13 @@ from resume_bench.grading.models import GradingConfig, SectionScore
 from resume_bench.grading.text import field_similarity, token_f1
 
 
+def _join_name(d: dict) -> str:
+    """Join fname + lname into a single name string for comparison."""
+    fname = (d.get("fname") or "").strip()
+    lname = (d.get("lname") or "").strip()
+    return f"{fname} {lname}".strip()
+
+
 def score_singleton(
     gt: dict,
     pred: dict,
@@ -17,7 +24,28 @@ def score_singleton(
     field_scores = []
     field_acc = {}
 
-    for f in key_fields:
+    # Join fname + lname into a single "name" comparison instead of scoring
+    # them separately. This avoids penalising models that split the name at a
+    # different boundary (e.g. "Jean Marie" / "Schiraldi" vs "Jean" / "Marie
+    # Schiraldi"). Same idea as joining description bullets before token_f1.
+    has_name_fields = "fname" in key_fields and "lname" in key_fields
+    scored_fields = [f for f in key_fields if f not in ("fname", "lname")] if has_name_fields else list(key_fields)
+
+    if has_name_fields:
+        gt_name = _join_name(gt)
+        pred_name = _join_name(pred)
+
+        if not gt_name and not pred_name:
+            sim = 1.0
+        elif not gt_name or not pred_name:
+            sim = 0.0
+        else:
+            sim = field_similarity(gt_name, pred_name)
+
+        field_acc["name"] = round(sim, 4)
+        field_scores.append(sim)
+
+    for f in scored_fields:
         gt_val = gt.get(f, "")
         pred_val = pred.get(f, "")
 
@@ -43,9 +71,12 @@ def score_singleton(
 
     avg = round(sum(field_scores) / len(field_scores), 4) if field_scores else 0.0
 
+    # Check vacuous using the effective fields (name instead of fname/lname)
+    effective_fields = (["name"] if has_name_fields else []) + scored_fields
     is_vacuous = all(
-        not gt.get(f) and not pred.get(f)
-        for f in key_fields
+        not (gt.get(f) or pred.get(f)) if f != "name"
+        else not _join_name(gt) and not _join_name(pred)
+        for f in effective_fields
     )
 
     return SectionScore(
