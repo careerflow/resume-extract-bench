@@ -176,7 +176,10 @@ def grade_file(
 
             record = json.loads(line)
             rid = record["resume_id"]
-            pred = record.get("prediction", record.get("output", {}))
+            pred = record.get("prediction") or record.get("output")
+            if pred is None:
+                # Flat format: prediction fields are top-level in the record
+                pred = {k: v for k, v in record.items() if k != "resume_id"}
             predictions[rid] = pred
 
     scores = []
