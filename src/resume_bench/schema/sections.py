@@ -48,7 +48,7 @@ SECTIONS_FULL: tuple[SectionSpec, ...] = (
     SectionSpec(
         "basics",
         SectionKind.SINGLETON,
-        ("fname", "lname", "email", "phone", "city", "state", "country", "hasPersonalPhoto")
+        ("fname", "lname", "email", "phone", "city", "state", "country", "hasPersonalPhoto", "linkedinUrl")
     ),
     SectionSpec(
         "experience",
@@ -93,6 +93,32 @@ SECTIONS_FULL: tuple[SectionSpec, ...] = (
         "skills",
         SectionKind.FLAT_LIST,
         ()
+    ),
+    SectionSpec(
+        "publications",
+        SectionKind.ENTITY_LIST,
+        ("name",)
+    ),
+    SectionSpec(
+        "languages",
+        SectionKind.ENTITY_LIST,
+        ("name",)
+    ),
+    SectionSpec(
+        "interests",
+        SectionKind.ENTITY_LIST,
+        ("name",)
+    ),
+    SectionSpec(
+        "profiles",
+        SectionKind.ENTITY_LIST,
+        ("network",)
+    ),
+    SectionSpec(
+        "customSections",
+        SectionKind.ENTITY_LIST,
+        ("sectionTitle",),
+        score_description=True
     ),
 )
 
@@ -156,6 +182,32 @@ SECTIONS_TRIMMED: tuple[SectionSpec, ...] = (
         "skills",
         SectionKind.FLAT_LIST,
         ()
+    ),
+    SectionSpec(
+        "publications",
+        SectionKind.ENTITY_LIST,
+        ("name",)
+    ),
+    SectionSpec(
+        "languages",
+        SectionKind.ENTITY_LIST,
+        ("name",)
+    ),
+    SectionSpec(
+        "interests",
+        SectionKind.ENTITY_LIST,
+        ("name",)
+    ),
+    SectionSpec(
+        "profiles",
+        SectionKind.ENTITY_LIST,
+        ("network",)
+    ),
+    SectionSpec(
+        "customSections",
+        SectionKind.ENTITY_LIST,
+        ("sectionTitle",),
+        score_description=True
     ),
 )
 
