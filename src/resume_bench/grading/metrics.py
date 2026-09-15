@@ -4,7 +4,80 @@ from typing import Sequence
 
 from resume_bench.grading.alignment import align_entities
 from resume_bench.grading.models import GradingConfig, SectionScore
-from resume_bench.grading.text import field_similarity, token_f1
+from resume_bench.grading.text import edit_distance_ratio, field_similarity, token_f1
+
+# String fields that contain prose/text blocks rather than short identity values.
+# These are scored with edit_distance_ratio (order-sensitive character comparison)
+# instead of Jaro-Winkler (prefix-weighted, designed for short names/titles).
+_TEXT_BLOCK_FIELDS = {"summary", "roleDescription", "text"}
+
+
+def _positional_bullet_score(gt_list: list, pred_list: list) -> float:
+    """Score description bullets positionally using edit distance ratio.
+
+    Compares bullet[0] vs bullet[0], bullet[1] vs bullet[1], etc.
+    Missing or extra bullets score 0.0.
+    """
+    n = max(len(gt_list), len(pred_list))
+    if n == 0:
+        return 1.0
+    scores = []
+    for i in range(n):
+        gt_bullet = str(gt_list[i]).strip() if i < len(gt_list) else ""
+        pred_bullet = str(pred_list[i]).strip() if i < len(pred_list) else ""
+        scores.append(edit_distance_ratio(gt_bullet, pred_bullet))
+    return sum(scores) / len(scores)
+
+
+def _entity_quality(gt_entity: dict, pred_entity: dict) -> float:
+    """Compute extraction quality for a matched entity pair.
+
+    Scores ALL fields where GT has data. Skips empty/null GT fields.
+    Returns the average score across all scorable fields.
+    """
+    scores: list[float] = []
+
+    for key, gt_val in gt_entity.items():
+        # Skip empty GT fields — don't penalise for fields GT doesn't have
+        if gt_val is None:
+            continue
+        if isinstance(gt_val, str) and not gt_val.strip():
+            continue
+        if isinstance(gt_val, list) and not gt_val:
+            continue
+
+        pred_val = pred_entity.get(key)
+
+        if isinstance(gt_val, list):
+            # Array field (description bullets) → positional edit distance
+            pred_list = pred_val if isinstance(pred_val, list) else []
+            scores.append(_positional_bullet_score(gt_val, pred_list))
+        elif isinstance(gt_val, bool):
+            # Boolean → exact match
+            if pred_val is None:
+                scores.append(0.0)
+            else:
+                scores.append(1.0 if gt_val == bool(pred_val) else 0.0)
+        elif isinstance(gt_val, (int, float)):
+            # Numeric → exact match
+            scores.append(1.0 if gt_val == pred_val else 0.0)
+        elif isinstance(gt_val, str):
+            pred_str = str(pred_val or "")
+            if key in _TEXT_BLOCK_FIELDS:
+                # Text block field → edit distance ratio
+                scores.append(edit_distance_ratio(gt_val, pred_str))
+            else:
+                # Short identity field → Jaro-Winkler
+                scores.append(field_similarity(gt_val, pred_str))
+
+    return sum(scores) / len(scores) if scores else 1.0
+
+
+def _join_name(d: dict) -> str:
+    """Join fname + lname into a single name string for comparison."""
+    fname = (d.get("fname") or "").strip()
+    lname = (d.get("lname") or "").strip()
+    return f"{fname} {lname}".strip()
 
 
 def score_singleton(
@@ -17,7 +90,28 @@ def score_singleton(
     field_scores = []
     field_acc = {}
 
-    for f in key_fields:
+    # Join fname + lname into a single "name" comparison instead of scoring
+    # them separately. This avoids penalising models that split the name at a
+    # different boundary (e.g. "Jean Marie" / "Schiraldi" vs "Jean" / "Marie
+    # Schiraldi"). Same idea as joining description bullets before token_f1.
+    has_name_fields = "fname" in key_fields and "lname" in key_fields
+    scored_fields = [f for f in key_fields if f not in ("fname", "lname")] if has_name_fields else list(key_fields)
+
+    if has_name_fields:
+        gt_name = _join_name(gt)
+        pred_name = _join_name(pred)
+
+        if not gt_name and not pred_name:
+            sim = 1.0
+        elif not gt_name or not pred_name:
+            sim = 0.0
+        else:
+            sim = field_similarity(gt_name, pred_name)
+
+        field_acc["name"] = round(sim, 4)
+        field_scores.append(sim)
+
+    for f in scored_fields:
         gt_val = gt.get(f, "")
         pred_val = pred.get(f, "")
 
@@ -43,9 +137,12 @@ def score_singleton(
 
     avg = round(sum(field_scores) / len(field_scores), 4) if field_scores else 0.0
 
+    # Check vacuous using the effective fields (name instead of fname/lname)
+    effective_fields = (["name"] if has_name_fields else []) + scored_fields
     is_vacuous = all(
-        not gt.get(f) and not pred.get(f)
-        for f in key_fields
+        not (gt.get(f) or pred.get(f)) if f != "name"
+        else not _join_name(gt) and not _join_name(pred)
+        for f in effective_fields
     )
 
     return SectionScore(
@@ -98,8 +195,9 @@ def score_flat_list(
         gt_wrapped, pred_wrapped, key_fields=["name"], threshold=cfg.threshold,
     )
 
-    precision = len(matched) / len(pred_skills)
-    recall = len(matched) / len(gt_skills)
+    qualities = [sim for _, _, sim in matched]
+    precision = sum(qualities) / len(pred_skills)
+    recall = sum(qualities) / len(gt_skills)
     f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
 
     return SectionScore(
@@ -140,8 +238,9 @@ def score_entity_list(
         gt_items, pred_items, key_fields, threshold=cfg.threshold,
     )
 
-    precision = len(matched) / len(pred_items)
-    recall = len(matched) / len(gt_items)
+    qualities = [_entity_quality(gt_items[gi], pred_items[pi]) for gi, pi, _ in matched]
+    precision = sum(qualities) / len(pred_items)
+    recall = sum(qualities) / len(gt_items)
     f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
 
     field_acc = {}
@@ -163,11 +262,11 @@ def score_entity_list(
         desc_scores = []
 
         for gi, pi, _ in matched:
-            gt_desc = " ".join(gt_items[gi].get("description", []))
-            pred_desc = " ".join(pred_items[pi].get("description", []))
+            gt_desc = gt_items[gi].get("description", [])
+            pred_desc = pred_items[pi].get("description", [])
 
-            if gt_desc.strip():
-                desc_scores.append(token_f1(gt_desc, pred_desc))
+            if gt_desc:
+                desc_scores.append(_positional_bullet_score(gt_desc, pred_desc))
 
         if desc_scores:
             desc_f1 = round(sum(desc_scores) / len(desc_scores), 4)
