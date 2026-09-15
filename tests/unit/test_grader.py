@@ -80,7 +80,7 @@ class TestGradeSingle:
         assert "experience" not in nv
         assert "education" not in nv
 
-    def test_basics_excluded_from_headline(self):
+    def test_basics_included_in_headline(self):
         gt = {
             "basics": {"fname": "Jane", "lname": "Smith"},
             "experience": [{"company": "Google", "position": "SWE"}],
@@ -92,8 +92,8 @@ class TestGradeSingle:
 
         score = grade_single(gt, pred)
 
-        assert score.sections["basics"].in_headline is False
-        assert "basics" not in score.headline_sections
+        assert score.sections["basics"].in_headline is True
+        assert "basics" in score.headline_sections
         assert score.basics_field_accuracy > 0.9
 
     def test_failed_resume_scores_zero(self):

@@ -51,7 +51,6 @@ def grade_single(
             pred_dict = pred_data if isinstance(pred_data, dict) else {}
 
             section_score = score_singleton(gt_dict, pred_dict, spec.key_fields, cfg)
-            section_score.in_headline = False
 
         elif spec.kind == SectionKind.FLAT_LIST:
             gt_list = gt_data if isinstance(gt_data, list) else []
