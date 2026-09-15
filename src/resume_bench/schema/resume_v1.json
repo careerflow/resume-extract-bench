@@ -39,6 +39,54 @@
         "hasPersonalPhoto": {
           "type": ["boolean", "null"],
           "description": "true if the resume contains a personal profile photo or headshot. false if there is no personal photo. Look for embedded images that appear to be portrait/headshot photographs of a person, typically near the top of the resume or in a sidebar. Do not count logos, icons, decorative graphics, or certification badges."
+        },
+        "linkedinUrl": {
+          "type": ["string", "null"],
+          "description": "LinkedIn profile URL, if present in the resume."
+        },
+        "targetJobTitle": {
+          "type": ["string", "null"],
+          "description": "Desired or target job title from the resume header or objective. Do NOT infer from work experience history."
+        },
+        "dob": {
+          "type": ["string", "null"],
+          "description": "Date of birth as written in the resume. Null if not stated."
+        },
+        "gender": {
+          "type": ["string", "null"],
+          "description": "Gender as stated in the resume. Null if not stated."
+        },
+        "nationality": {
+          "type": ["string", "null"],
+          "description": "Nationality or citizenship as stated. Null if not stated."
+        },
+        "address": {
+          "type": ["string", "null"],
+          "description": "Street address (not city/state/country, which have their own fields). Null if not stated."
+        },
+        "postalCode": {
+          "type": ["string", "null"],
+          "description": "ZIP or postal code. Null if not stated."
+        },
+        "openToRemote": {
+          "type": ["boolean", "null"],
+          "description": "true if the candidate indicates openness to remote work. Null if not stated."
+        },
+        "openToRelocate": {
+          "type": ["boolean", "null"],
+          "description": "true if the candidate indicates willingness to relocate. Null if not stated."
+        },
+        "openToOnSite": {
+          "type": ["boolean", "null"],
+          "description": "true if the candidate indicates openness to on-site work. Null if not stated."
+        },
+        "openToHybrid": {
+          "type": ["boolean", "null"],
+          "description": "true if the candidate indicates openness to hybrid work. Null if not stated."
+        },
+        "openToTravel": {
+          "type": ["boolean", "null"],
+          "description": "true if the candidate indicates willingness to travel. Null if not stated."
         }
       }
     },
@@ -83,6 +131,10 @@
           "country": {
             "type": ["string", "null"],
             "description": "Country where the role is located. Null if no country is stated."
+          },
+          "roleDescription": {
+            "type": ["string", "null"],
+            "description": "Introductory text or role summary that appears before bullet points. Null if none."
           },
           "description": {
             "type": "array",
@@ -176,6 +228,30 @@
           "url": {
             "type": ["string", "null"],
             "description": "Project link or repository URL, if present in the resume."
+          },
+          "companyName": {
+            "type": ["string", "null"],
+            "description": "Organization associated with the project. Null if not stated."
+          },
+          "city": {
+            "type": ["string", "null"],
+            "description": "City where the project was based. Null if not stated."
+          },
+          "country": {
+            "type": ["string", "null"],
+            "description": "Country where the project was based. Null if not stated."
+          },
+          "startMonth": {
+            "type": ["integer", "null"],
+            "description": "Month the project started (1-12). Null if not stated."
+          },
+          "endMonth": {
+            "type": ["integer", "null"],
+            "description": "Month the project ended (1-12). Null if not stated."
+          },
+          "inProgress": {
+            "type": ["boolean", "null"],
+            "description": "true if the project is ongoing. Null if not stated."
           }
         }
       }
@@ -222,6 +298,10 @@
           "date": {
             "type": ["string", "null"],
             "description": "Date of award as written in the resume"
+          },
+          "summary": {
+            "type": ["string", "null"],
+            "description": "Additional description of the award. Null if none."
           }
         }
       }
@@ -256,6 +336,26 @@
           "currentlyVolunteerHere": {
             "type": ["boolean", "null"],
             "description": "true if currently volunteering here. false otherwise."
+          },
+          "startMonth": {
+            "type": ["integer", "null"],
+            "description": "Month volunteering started (1-12). Null if not stated."
+          },
+          "endMonth": {
+            "type": ["integer", "null"],
+            "description": "Month volunteering ended (1-12). Null if not stated."
+          },
+          "city": {
+            "type": ["string", "null"],
+            "description": "City where volunteering took place. Null if not stated."
+          },
+          "country": {
+            "type": ["string", "null"],
+            "description": "Country where volunteering took place. Null if not stated."
+          },
+          "summary": {
+            "type": ["string", "null"],
+            "description": "Introductory text about the volunteer role. Null if none."
           }
         }
       }
@@ -274,6 +374,96 @@
             "type": "array",
             "items": {"type": "string"},
             "description": "List of individual skills in this category. Skills should be concise keyword-style items, e.g. 'Python', 'Project Management', 'Statistical Process Control (SPC)'. Do NOT include full sentences or competency statements. Only include skills explicitly present in the resume — no guessing or inventing. Preserve original casing. Each skill must appear in exactly one category. Do not repeat a skill across categories."
+          }
+        }
+      }
+    },
+    "publications": {
+      "type": "array",
+      "description": "List of publications or research papers from dedicated publications or research sections. Do NOT extract publications mentioned within experience or education descriptions.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": ["string", "null"],
+            "description": "Title of the publication."
+          },
+          "publisher": {
+            "type": ["string", "null"],
+            "description": "Journal, conference, or publisher name."
+          },
+          "date": {
+            "type": ["string", "null"],
+            "description": "Publication date as written in the resume."
+          },
+          "summary": {
+            "type": ["string", "null"],
+            "description": "Brief description or abstract of the publication."
+          }
+        }
+      }
+    },
+    "languages": {
+      "type": "array",
+      "description": "List of spoken/written languages from dedicated language sections. Only natural languages (English, Spanish, Mandarin, etc.) — NOT programming languages (those go in skills).",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": ["string", "null"],
+            "description": "Language name (e.g. 'English', 'Spanish', 'Mandarin')."
+          }
+        }
+      }
+    },
+    "interests": {
+      "type": "array",
+      "description": "List of hobbies or interests from dedicated interests/hobbies sections.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": ["string", "null"],
+            "description": "Interest or hobby name."
+          }
+        }
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "description": "List of online profile links (GitHub, portfolio, Twitter, etc.) from the resume. LinkedIn goes in basics.linkedinUrl, not here.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": ["string", "null"],
+            "description": "Platform name (e.g. 'GitHub', 'Twitter', 'Portfolio')."
+          },
+          "url": {
+            "type": ["string", "null"],
+            "description": "Profile URL."
+          }
+        }
+      }
+    },
+    "customSections": {
+      "type": "array",
+      "description": "Extract any resume sections that do not fit the standard categories above (basics, experience, education, projects, personalSummary, certifications, awards, volunteering, skills, publications, languages, interests, profiles). Each entry represents one non-standard section found in the resume.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sectionTitle": {
+            "type": ["string", "null"],
+            "description": "The exact section heading as it appears in the resume (e.g. 'Bar Admissions', 'Professional Associations')."
+          },
+          "summary": {
+            "type": ["string", "null"],
+            "description": "Optional introductory or summary text that appears at the top of the section before any bullet points. Null if the section has no introductory text."
+          },
+          "description": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Array of bullet points or individual entries in this section. Each array element is one bullet or line item. Strip bullet symbols but preserve the complete visible text."
           }
         }
       }
