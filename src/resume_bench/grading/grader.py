@@ -73,8 +73,8 @@ def grade_single(
                         pred_count=1 if pred_text else 0,
                     )
                 else:
-                    from resume_bench.grading.text import token_f1
-                    f1 = token_f1(gt_text, pred_text)
+                    from resume_bench.grading.text import edit_distance_ratio
+                    f1 = edit_distance_ratio(gt_text, pred_text)
                     section_score = SectionScore(
                         gt_count=1,
                         pred_count=1,

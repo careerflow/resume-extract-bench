@@ -1,4 +1,4 @@
-from resume_bench.grading.text import field_similarity, normalize_text, token_f1
+from resume_bench.grading.text import edit_distance_ratio, field_similarity, normalize_text, token_f1
 
 
 class TestNormalizeText:
@@ -65,6 +65,40 @@ class TestFieldSimilarity:
     def test_dissimilar_strings(self):
         sim = field_similarity("Google", "Microsoft")
         assert sim < 0.7
+
+
+class TestEditDistanceRatio:
+
+    def test_identical(self):
+        assert edit_distance_ratio("hello world", "hello world") == 1.0
+
+    def test_both_empty(self):
+        assert edit_distance_ratio("", "") == 1.0
+
+    def test_both_none(self):
+        assert edit_distance_ratio(None, None) == 1.0
+
+    def test_one_empty(self):
+        assert edit_distance_ratio("hello", "") == 0.0
+
+    def test_one_none(self):
+        assert edit_distance_ratio(None, "hello") == 0.0
+
+    def test_case_insensitive(self):
+        assert edit_distance_ratio("Hello World", "hello world") == 1.0
+
+    def test_similar_strings(self):
+        ratio = edit_distance_ratio("Built search features", "Built search feature")
+        assert ratio > 0.9
+
+    def test_dissimilar_strings(self):
+        ratio = edit_distance_ratio("Built search features", "Led a team of five")
+        assert ratio < 0.5
+
+    def test_single_char_edit(self):
+        # "cat" vs "bat" — 1 edit, max length 3 → ratio = 1 - 1/3 ≈ 0.667
+        ratio = edit_distance_ratio("cat", "bat")
+        assert abs(ratio - 2 / 3) < 0.01
 
 
 class TestTokenF1:

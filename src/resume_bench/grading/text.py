@@ -29,6 +29,18 @@ def field_similarity(a: str | None, b: str | None) -> float:
     return jellyfish.jaro_winkler_similarity(a, b)
 
 
+def edit_distance_ratio(a: str, b: str) -> float:
+    """Normalized edit distance similarity. Returns 0.0-1.0."""
+    a = (a or "").lower().strip()
+    b = (b or "").lower().strip()
+    if not a and not b:
+        return 1.0
+    if not a or not b:
+        return 0.0
+    dist = jellyfish.levenshtein_distance(a, b)
+    return 1.0 - dist / max(len(a), len(b))
+
+
 def token_f1(gt_text: str, pred_text: str) -> float:
     """Bag-of-words F1 between two text blocks. Returns 0.0-1.0."""
     gt_tokens = set(gt_text.lower().split())
