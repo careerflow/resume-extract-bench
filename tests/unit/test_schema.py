@@ -30,7 +30,7 @@ class TestSchema:
 class TestSections:
 
     def test_section_count(self):
-        assert len(SECTIONS) == 9
+        assert len(SECTIONS) == 14
 
     def test_basics_is_singleton(self):
         basics = next(s for s in SECTIONS if s.name == "basics")
