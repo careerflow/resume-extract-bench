@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from resume_bench.dataset.loader import load_split
-from resume_bench.grading.metrics import score_entity_list, score_flat_list, score_singleton
+from resume_bench.grading.metrics import SECTION_SCHEMA_FIELDS, score_entity_list, score_flat_list, score_singleton
 from resume_bench.grading.models import GradingConfig, ResumeScore, SectionScore
 from resume_bench.schema.sections import SectionKind, get_sections
 from resume_bench.settings import settings
@@ -51,7 +51,6 @@ def grade_single(
             pred_dict = pred_data if isinstance(pred_data, dict) else {}
 
             section_score = score_singleton(gt_dict, pred_dict, spec.key_fields, cfg)
-            section_score.in_headline = False
 
         elif spec.kind == SectionKind.FLAT_LIST:
             gt_list = gt_data if isinstance(gt_data, list) else []
@@ -74,8 +73,8 @@ def grade_single(
                         pred_count=1 if pred_text else 0,
                     )
                 else:
-                    from resume_bench.grading.text import token_f1
-                    f1 = token_f1(gt_text, pred_text)
+                    from resume_bench.grading.text import edit_distance_ratio
+                    f1 = edit_distance_ratio(gt_text, pred_text)
                     section_score = SectionScore(
                         gt_count=1,
                         pred_count=1,
@@ -87,9 +86,15 @@ def grade_single(
                 gt_list = gt_data if isinstance(gt_data, list) else []
                 pred_list = pred_data if isinstance(pred_data, list) else []
 
+                schema_fields = (
+                    SECTION_SCHEMA_FIELDS.get(spec.name)
+                    if cfg.score_all_fields else None
+                )
                 section_score = score_entity_list(
                     gt_list, pred_list, spec.key_fields,
-                    score_description=spec.score_description, cfg=cfg,
+                    score_description=spec.score_description,
+                    schema_fields=schema_fields,
+                    cfg=cfg,
                 )
         else:
             continue
