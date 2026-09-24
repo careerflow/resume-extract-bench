@@ -40,6 +40,7 @@ SECTION_SCHEMA_FIELDS: dict[str, list[str]] = {
     "interests": ["name"],
     "profiles": ["network", "url"],
     "customSections": ["sectionTitle", "summary"],
+    "personalSummary": ["text"],
 }
 
 
