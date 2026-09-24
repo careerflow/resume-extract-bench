@@ -11,6 +11,50 @@ from resume_bench.grading.text import edit_distance_ratio, field_similarity, tok
 # instead of Jaro-Winkler (prefix-weighted, designed for short names/titles).
 _TEXT_BLOCK_FIELDS = {"summary", "roleDescription", "text"}
 
+# All scalar fields per section type (excludes 'description' arrays which are
+# handled separately by _positional_bullet_score).
+SECTION_SCHEMA_FIELDS: dict[str, list[str]] = {
+    "experience": [
+        "company", "position", "startMonth", "startYear",
+        "endMonth", "endYear", "currentlyWorkHere", "city", "country",
+        "roleDescription",
+    ],
+    "education": [
+        "institution", "area", "studyType", "score",
+        "startMonth", "startYear", "endMonth", "endYear",
+        "currentlyStudyHere", "city", "country",
+    ],
+    "projects": [
+        "name", "startYear", "endYear", "url", "companyName",
+        "city", "country", "startMonth", "endMonth", "inProgress",
+    ],
+    "certifications": ["name", "issuer", "date"],
+    "awards": ["title", "awarder", "date", "summary"],
+    "volunteering": [
+        "organization", "position", "startYear", "endYear",
+        "currentlyVolunteerHere", "startMonth", "endMonth",
+        "city", "country", "summary",
+    ],
+    "publications": ["name", "publisher", "date", "summary"],
+    "languages": ["name"],
+    "interests": ["name"],
+    "profiles": ["network", "url"],
+    "customSections": ["sectionTitle", "summary"],
+    "personalSummary": ["text"],
+}
+
+
+def _is_empty(val) -> bool:
+    """Check if a value is effectively empty/null."""
+    if val is None:
+        return True
+    if isinstance(val, str) and not val.strip():
+        return True
+    if isinstance(val, list) and not val:
+        return True
+    return False
+
+
 
 def _positional_bullet_score(gt_list: list, pred_list: list) -> float:
     """Score description bullets positionally using edit distance ratio.
@@ -29,46 +73,76 @@ def _positional_bullet_score(gt_list: list, pred_list: list) -> float:
     return sum(scores) / len(scores)
 
 
-def _entity_quality(gt_entity: dict, pred_entity: dict) -> float:
+def _entity_quality(
+    gt_entity: dict,
+    pred_entity: dict,
+    schema_fields: list[str] | None = None,
+) -> float:
     """Compute extraction quality for a matched entity pair.
 
-    Scores ALL fields where GT has data. Skips empty/null GT fields.
-    Returns the average score across all scorable fields.
+    When schema_fields is None (default): scores only fields where GT has data.
+    When schema_fields is provided: scores ALL listed fields using ExtractBench
+    rules -- null/null = 1.0, null/value = 0.0, value/null = 0.0.
     """
     scores: list[float] = []
 
-    for key, gt_val in gt_entity.items():
-        # Skip empty GT fields — don't penalise for fields GT doesn't have
-        if gt_val is None:
-            continue
-        if isinstance(gt_val, str) and not gt_val.strip():
-            continue
-        if isinstance(gt_val, list) and not gt_val:
-            continue
+    # Determine which fields to iterate
+    if schema_fields is not None:
+        fields_to_score = schema_fields
+    else:
+        fields_to_score = list(gt_entity.keys())
 
+    for key in fields_to_score:
+        gt_val = gt_entity.get(key)
         pred_val = pred_entity.get(key)
 
+        gt_empty = _is_empty(gt_val)
+        pred_empty = _is_empty(pred_val)
+
+        if gt_empty and pred_empty:
+            if schema_fields is not None:
+                scores.append(1.0)
+            continue
+
+        if gt_empty and not pred_empty:
+            if schema_fields is not None:
+                scores.append(0.0)
+            continue
+
+        if not gt_empty and pred_empty:
+            scores.append(0.0)
+            continue
+
+        # Both have values — compare by type
         if isinstance(gt_val, list):
-            # Array field (description bullets) → positional edit distance
             pred_list = pred_val if isinstance(pred_val, list) else []
             scores.append(_positional_bullet_score(gt_val, pred_list))
         elif isinstance(gt_val, bool):
-            # Boolean → exact match
-            if pred_val is None:
-                scores.append(0.0)
-            else:
-                scores.append(1.0 if gt_val == bool(pred_val) else 0.0)
+            scores.append(1.0 if gt_val == bool(pred_val) else 0.0)
         elif isinstance(gt_val, (int, float)):
-            # Numeric → exact match
             scores.append(1.0 if gt_val == pred_val else 0.0)
         elif isinstance(gt_val, str):
             pred_str = str(pred_val or "")
             if key in _TEXT_BLOCK_FIELDS:
-                # Text block field → edit distance ratio
                 scores.append(edit_distance_ratio(gt_val, pred_str))
             else:
-                # Short identity field → Jaro-Winkler
                 scores.append(field_similarity(gt_val, pred_str))
+
+    # In schema_fields mode, also score description arrays since they are
+    # not listed in SECTION_SCHEMA_FIELDS (handled separately).
+    if schema_fields is not None:
+        for desc_key in ("description", "descriptions"):
+            gt_desc = gt_entity.get(desc_key)
+            pred_desc = pred_entity.get(desc_key)
+            gt_has = isinstance(gt_desc, list) and gt_desc
+            pred_has = isinstance(pred_desc, list) and pred_desc
+            if gt_has:
+                pred_list = pred_desc if pred_has else []
+                scores.append(_positional_bullet_score(gt_desc, pred_list))
+            elif pred_has:
+                scores.append(0.0)
+            # both empty → skip (no description to score)
+
 
     return sum(scores) / len(scores) if scores else 1.0
 
@@ -216,6 +290,7 @@ def score_entity_list(
     pred_items: list[dict],
     key_fields: Sequence[str],
     score_description: bool = False,
+    schema_fields: list[str] | None = None,
     cfg: GradingConfig = GradingConfig(),
 ) -> SectionScore:
     """Score a list section (experience, education, etc.) using Hungarian alignment."""
@@ -238,7 +313,10 @@ def score_entity_list(
         gt_items, pred_items, key_fields, threshold=cfg.threshold,
     )
 
-    qualities = [_entity_quality(gt_items[gi], pred_items[pi]) for gi, pi, _ in matched]
+    qualities = [
+        _entity_quality(gt_items[gi], pred_items[pi], schema_fields=schema_fields)
+        for gi, pi, _ in matched
+    ]
     precision = sum(qualities) / len(pred_items)
     recall = sum(qualities) / len(gt_items)
     f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0

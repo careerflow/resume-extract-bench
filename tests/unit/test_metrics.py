@@ -1,10 +1,12 @@
 from resume_bench.grading.metrics import (
+    SECTION_SCHEMA_FIELDS,
     _entity_quality,
     _positional_bullet_score,
     score_entity_list,
     score_flat_list,
     score_singleton,
 )
+from resume_bench.grading.models import GradingConfig
 
 
 class TestScoreSingleton:
@@ -344,3 +346,103 @@ class TestPositionalBulletScore:
             ["Built search feature for Google"],
         )
         assert score > 0.9
+
+
+class TestEntityQualitySchemaFields:
+    """Tests for _entity_quality with schema_fields (ExtractBench mode)."""
+
+    def test_both_null_scores_one(self):
+        gt = {"company": "Google"}
+        pred = {"company": "Google"}
+        schema = ["company", "startYear"]
+
+        q = _entity_quality(gt, pred, schema_fields=schema)
+        # company=1.0, startYear both null=1.0 → avg=1.0
+        assert q == 1.0
+
+    def test_gt_null_pred_has_value_scores_zero(self):
+        gt = {"company": "Google"}
+        pred = {"company": "Google", "city": "NYC"}
+        schema = ["company", "city"]
+
+        q = _entity_quality(gt, pred, schema_fields=schema)
+        # company=1.0, city=0.0 (GT null, pred has value) → avg=0.5
+        assert q == 0.5
+
+    def test_gt_has_value_pred_null_scores_zero(self):
+        gt = {"company": "Google", "startYear": 2020}
+        pred = {"company": "Google"}
+        schema = ["company", "startYear"]
+
+        q = _entity_quality(gt, pred, schema_fields=schema)
+        # company=1.0, startYear=0.0 → avg=0.5
+        assert q == 0.5
+
+    def test_all_schema_fields_more_denominator(self):
+        """With schema_fields, quality uses more fields in the denominator."""
+        gt = {"company": "Google", "position": "SWE"}
+        pred = {"company": "Google", "position": "SWE", "city": "NYC"}
+
+        # GT-only mode: only company + position → 1.0
+        q_gt_only = _entity_quality(gt, pred)
+        assert q_gt_only == 1.0
+
+        # Schema-fields mode: company + position + city (hallucinated) + others
+        schema = ["company", "position", "startYear", "city"]
+        q_schema = _entity_quality(gt, pred, schema_fields=schema)
+        # company=1.0, position=1.0, startYear=1.0 (both null), city=0.0 → 3/4=0.75
+        assert q_schema == 0.75
+
+    def test_description_scored_in_schema_mode(self):
+        """Description arrays are scored even in schema_fields mode."""
+        gt = {"company": "Google", "description": ["Built search"]}
+        pred = {"company": "Google", "description": ["Built search"]}
+        schema = ["company"]
+
+        q = _entity_quality(gt, pred, schema_fields=schema)
+        # company=1.0, description=1.0 → avg=1.0
+        assert q == 1.0
+
+    def test_description_hallucinated_in_schema_mode(self):
+        """Hallucinated description penalized in schema_fields mode."""
+        gt = {"company": "Google"}
+        pred = {"company": "Google", "description": ["Hallucinated bullet"]}
+        schema = ["company"]
+
+        q = _entity_quality(gt, pred, schema_fields=schema)
+        # company=1.0, description hallucinated=0.0 → avg=0.5
+        assert q == 0.5
+
+    def test_without_schema_fields_unchanged(self):
+        """Without schema_fields, behavior matches the original GT-only mode."""
+        gt = {"company": "Google", "position": "", "startYear": None}
+        pred = {"company": "Google", "city": "NYC"}
+
+        q = _entity_quality(gt, pred)
+        # Only 'company' has GT data → 1.0
+        assert q == 1.0
+
+
+class TestScoreEntityListSchemaFields:
+    """Tests for score_entity_list with schema_fields."""
+
+    def test_schema_fields_penalizes_hallucinated_field(self):
+        gt = [{"company": "Google", "position": "SWE"}]
+        pred = [{"company": "Google", "position": "SWE", "city": "NYC"}]
+        schema = ["company", "position", "city"]
+
+        score = score_entity_list(
+            gt, pred, ("company", "position"), schema_fields=schema,
+        )
+
+        # city hallucinated → quality < 1.0 → F1 < 1.0
+        assert score.f1 < 1.0
+
+    def test_no_schema_fields_ignores_hallucinated_field(self):
+        gt = [{"company": "Google", "position": "SWE"}]
+        pred = [{"company": "Google", "position": "SWE", "city": "NYC"}]
+
+        score = score_entity_list(gt, pred, ("company", "position"))
+
+        # GT-only mode: city not in GT → ignored → F1 = 1.0
+        assert score.f1 == 1.0

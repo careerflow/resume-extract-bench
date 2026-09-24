@@ -12,6 +12,10 @@ SECTION BOUNDARIES — each item belongs in exactly one section:
 - Job accomplishments and KPIs from experience bullets → experience description (NOT awards)
 - Board memberships and volunteer roles → volunteering (NOT awards)
 - Professional memberships and affiliations → certifications (NOT education)
+- Publications and research papers → publications (NOT experience or customSections)
+- Spoken/written natural languages → languages (NOT skills; programming languages go in skills)
+- Hobbies and interests → interests (NOT customSections)
+- Online profile links (GitHub, portfolio, Twitter) → profiles (LinkedIn goes in basics.linkedinUrl)
 
 NAME SPLITTING:
 - Split the person's full name into fname (first name) and lname (last name).
@@ -73,3 +77,32 @@ PERSONAL PHOTO:
 - Set hasPersonalPhoto to true if the resume contains an embedded personal profile photo or headshot.
 - Set hasPersonalPhoto to false if no personal photo is present.
 - Only count portrait/headshot photographs of a person — not logos, icons, decorative graphics, or certification badges.
+
+LINKEDIN URL:
+- Extract LinkedIn profile URL if present. Use field "linkedinUrl" in basics.
+- Do NOT place LinkedIn in the "profiles" array.
+
+TARGET JOB TITLE:
+- Extract target/desired job title from the resume header or objective to "targetJobTitle" in basics.
+- Do NOT infer from work experience history.
+
+PUBLICATIONS:
+- Extract from dedicated publications, research, or papers sections.
+- NOT from experience or education descriptions.
+
+LANGUAGES:
+- Extract spoken/written languages from dedicated language sections.
+- Only natural languages — NOT programming languages (those go in skills).
+
+INTERESTS:
+- Extract hobbies and interests from dedicated interests/hobbies sections.
+
+PROFILES:
+- Extract online profile links (GitHub, portfolio, Twitter, etc.) into the "profiles" array.
+- LinkedIn goes in basics.linkedinUrl, NOT in profiles.
+
+CUSTOM SECTIONS:
+- Extract any sections that do NOT fit standard categories (basics, experience, education, projects, personalSummary, certifications, awards, volunteering, skills, publications, languages, interests, profiles) into the "customSections" array.
+- Each entry: "sectionTitle" (exact heading as written in the resume) + "description" (array of bullet points or line items).
+- Optionally include "summary" if the section has introductory text before bullets.
+- Do NOT duplicate content already captured in standard sections.

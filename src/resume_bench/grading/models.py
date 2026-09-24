@@ -59,3 +59,4 @@ class ResumeScore:
 @dataclass
 class GradingConfig:
     threshold: float = 0.5
+    score_all_fields: bool = False
