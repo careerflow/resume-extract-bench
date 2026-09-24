@@ -7,6 +7,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from resume_bench.settings import settings
+
 app = typer.Typer(
     name="resume-bench",
     help="ResumeExtractBench - benchmark for structured resume extraction",
@@ -103,22 +105,47 @@ def grade(
     pipelines: list[str] = typer.Argument(..., help="Pipeline names to grade"),
     split: str = typer.Option("test", help="Dataset split"),
     threshold: float = typer.Option(0.5, help="Alignment similarity threshold"),
+    extractbench: bool = typer.Option(
+        False, "--extractbench",
+        help="Use ExtractBench-exact scoring (binary exact match, cell-level P/R/F1)",
+    ),
 ):
     """Grade extraction results against ground truth."""
-    from resume_bench.grading.grader import grade_pipelines
+    if extractbench:
+        from resume_bench.grading.grader import grade_pipelines_extractbench
 
-    console.print(f"Grading {len(pipelines)} pipeline(s)...")
+        console.print(f"Grading {len(pipelines)} pipeline(s) with ExtractBench-exact scoring...")
 
-    reports = grade_pipelines(
-        pipeline_names=pipelines,
-        split=split,
-        threshold=threshold,
-    )
+        reports = grade_pipelines_extractbench(
+            pipeline_names=pipelines,
+            split=split,
+        )
 
-    for name, report in reports.items():
-        console.print(f"\n[bold]{name}[/bold]")
-        console.print(f"  Resume Entity F1: {report['resume_entity_f1']:.4f}")
-        console.print(f"  Completion rate:  {report['completion_rate']:.1%}")
+        for name, report in reports.items():
+            console.print(f"\n[bold]{name}[/bold]")
+            console.print(f"  Micro F1:  {report['micro_f1']:.4f}")
+            console.print(f"  Macro F1:  {report['macro_f1']:.4f}")
+            console.print(
+                f"  Cells:     {report['total_cells']['correct']}"
+                f" / {report['total_cells']['expected']} expected"
+                f" / {report['total_cells']['predicted']} predicted"
+            )
+            console.print(f"  Completed: {report['completed']} / {report['total_resumes']}")
+    else:
+        from resume_bench.grading.grader import grade_pipelines
+
+        console.print(f"Grading {len(pipelines)} pipeline(s)...")
+
+        reports = grade_pipelines(
+            pipeline_names=pipelines,
+            split=split,
+            threshold=threshold,
+        )
+
+        for name, report in reports.items():
+            console.print(f"\n[bold]{name}[/bold]")
+            console.print(f"  Resume Entity F1: {report['resume_entity_f1']:.4f}")
+            console.print(f"  Completion rate:  {report['completion_rate']:.1%}")
 
 
 @app.command()
@@ -139,11 +166,74 @@ def report(
 @app.command()
 def leaderboard(
     split: str = typer.Option("test", help="Dataset split"),
+    extractbench: bool = typer.Option(
+        False, "--extractbench",
+        help="Show ExtractBench-exact leaderboard from grades_extractbench/",
+    ),
 ):
     """Show the current leaderboard."""
-    from resume_bench.report.leaderboard import print_leaderboard
+    if extractbench:
+        _show_extractbench_leaderboard(split)
+    else:
+        from resume_bench.report.leaderboard import print_leaderboard
 
-    print_leaderboard(split=split)
+        print_leaderboard(split=split)
+
+
+def _show_extractbench_leaderboard(split: str) -> None:
+    """Print a simple ExtractBench-exact leaderboard from saved grade files."""
+    import json
+
+    from resume_bench.grading.models import CellCounts
+
+    output_dir = settings.output_dir
+    rows: list[tuple[str, CellCounts, int]] = []
+
+    for pipeline_dir in sorted(output_dir.iterdir()):
+        grades_dir = pipeline_dir / split / "grades_extractbench"
+        if not grades_dir.exists():
+            continue
+
+        agg = CellCounts()
+        count = 0
+        for grade_path in grades_dir.glob("*.grade.json"):
+            with open(grade_path) as f:
+                data = json.load(f)
+            if not data.get("completed", True):
+                continue
+            agg.correct += data["correct"]
+            agg.expected += data["expected"]
+            agg.predicted += data["predicted"]
+            count += 1
+
+        if count:
+            rows.append((pipeline_dir.name, agg, count))
+
+    if not rows:
+        console.print("[yellow]No ExtractBench grades found. Run 'grade --extractbench' first.[/yellow]")
+        return
+
+    rows.sort(key=lambda r: r[1].f1, reverse=True)
+
+    table = Table(title=f"ExtractBench-Exact Leaderboard ({split})")
+    table.add_column("Rank", justify="right")
+    table.add_column("Pipeline")
+    table.add_column("Micro F1", justify="right")
+    table.add_column("Precision", justify="right")
+    table.add_column("Recall", justify="right")
+    table.add_column("Resumes", justify="right")
+
+    for i, (name, agg, count) in enumerate(rows, 1):
+        table.add_row(
+            str(i),
+            name,
+            f"{agg.f1:.4f}",
+            f"{agg.precision:.4f}",
+            f"{agg.recall:.4f}",
+            str(count),
+        )
+
+    console.print(table)
 
 
 @app.command()
@@ -151,6 +241,10 @@ def grade_file(
     predictions_path: Path = typer.Argument(..., help="JSONL file with predictions"),
     split: str = typer.Option("test", help="Dataset split for ground truth"),
     threshold: float = typer.Option(0.5, help="Alignment similarity threshold"),
+    extractbench: bool = typer.Option(
+        False, "--extractbench",
+        help="Use ExtractBench-exact scoring (binary exact match, cell-level P/R/F1)",
+    ),
 ):
     """Grade a predictions JSONL file against ground truth.
 
@@ -159,12 +253,9 @@ def grade_file(
     import json
 
     from resume_bench.dataset.loader import load_split
-    from resume_bench.grading.grader import grade_single
-    from resume_bench.grading.models import GradingConfig
 
     cases = load_split(split)
     gt_by_id = {c.resume_id: c.ground_truth for c in cases}
-    cfg = GradingConfig(threshold=threshold)
 
     predictions = {}
 
@@ -182,46 +273,93 @@ def grade_file(
                 pred = {k: v for k, v in record.items() if k != "resume_id"}
             predictions[rid] = pred
 
-    scores = []
+    if extractbench:
+        from resume_bench.grading.grader import grade_single_extractbench
+        from resume_bench.grading.models import CellCounts
 
-    for rid, gt in gt_by_id.items():
-        pred = predictions.get(rid)
+        eb_scores = []
 
-        if pred is None:
-            console.print(f"  [yellow]Missing prediction for {rid}[/yellow]")
-            continue
+        for rid, gt in gt_by_id.items():
+            pred = predictions.get(rid)
+            if pred is None:
+                console.print(f"  [yellow]Missing prediction for {rid}[/yellow]")
+                continue
+            score = grade_single_extractbench(gt, pred)
+            score.resume_id = rid
+            eb_scores.append(score)
 
-        score = grade_single(gt, pred, cfg)
-        score.resume_id = rid
-        scores.append(score)
+        if not eb_scores:
+            console.print("[red]No predictions matched any ground truth resume IDs.[/red]")
+            return
 
-    if not scores:
-        console.print("[red]No predictions matched any ground truth resume IDs.[/red]")
-        return
+        agg = CellCounts(
+            correct=sum(s.cells.correct for s in eb_scores),
+            expected=sum(s.cells.expected for s in eb_scores),
+            predicted=sum(s.cells.predicted for s in eb_scores),
+        )
+        resume_f1s = [s.cells.f1 for s in eb_scores]
+        macro_f1 = sum(resume_f1s) / len(resume_f1s)
 
-    avg_f1 = sum(s.macro_entity_f1 for s in scores) / len(scores)
-    avg_basics = sum(s.basics_field_accuracy for s in scores) / len(scores)
+        table = Table(title=f"ExtractBench-Exact Results ({len(eb_scores)} resumes)")
+        table.add_column("Metric", style="bold")
+        table.add_column("Value", justify="right")
 
-    table = Table(title=f"Grade Results ({len(scores)} resumes)")
-    table.add_column("Metric", style="bold")
-    table.add_column("Value", justify="right")
+        table.add_row("Micro F1", f"{agg.f1:.4f}")
+        table.add_row("Macro F1", f"{macro_f1:.4f}")
+        table.add_row("Micro Precision", f"{agg.precision:.4f}")
+        table.add_row("Micro Recall", f"{agg.recall:.4f}")
+        table.add_row("Cells Correct", str(agg.correct))
+        table.add_row("Cells Expected", str(agg.expected))
+        table.add_row("Cells Predicted", str(agg.predicted))
+        table.add_row("Resumes Graded", f"{len(eb_scores)} / {len(gt_by_id)}")
 
-    table.add_row("Headline Entity F1", f"{avg_f1:.4f}")
-    table.add_row("Basics Accuracy", f"{avg_basics:.4f}")
-    table.add_row("Resumes Graded", f"{len(scores)} / {len(gt_by_id)}")
+        console.print(table)
 
-    section_f1s: dict[str, list[float]] = {}
+    else:
+        from resume_bench.grading.grader import grade_single
+        from resume_bench.grading.models import GradingConfig
 
-    for s in scores:
-        for name, sec in s.sections.items():
-            if not sec.is_vacuous:
-                section_f1s.setdefault(name, []).append(sec.f1)
+        cfg = GradingConfig(threshold=threshold)
+        scores = []
 
-    for name, vals in sorted(section_f1s.items(), key=lambda x: -sum(x[1]) / len(x[1])):
-        avg = sum(vals) / len(vals)
-        table.add_row(f"  {name}", f"{avg:.4f}")
+        for rid, gt in gt_by_id.items():
+            pred = predictions.get(rid)
 
-    console.print(table)
+            if pred is None:
+                console.print(f"  [yellow]Missing prediction for {rid}[/yellow]")
+                continue
+
+            score = grade_single(gt, pred, cfg)
+            score.resume_id = rid
+            scores.append(score)
+
+        if not scores:
+            console.print("[red]No predictions matched any ground truth resume IDs.[/red]")
+            return
+
+        avg_f1 = sum(s.macro_entity_f1 for s in scores) / len(scores)
+        avg_basics = sum(s.basics_field_accuracy for s in scores) / len(scores)
+
+        table = Table(title=f"Grade Results ({len(scores)} resumes)")
+        table.add_column("Metric", style="bold")
+        table.add_column("Value", justify="right")
+
+        table.add_row("Headline Entity F1", f"{avg_f1:.4f}")
+        table.add_row("Basics Accuracy", f"{avg_basics:.4f}")
+        table.add_row("Resumes Graded", f"{len(scores)} / {len(gt_by_id)}")
+
+        section_f1s: dict[str, list[float]] = {}
+
+        for s in scores:
+            for name, sec in s.sections.items():
+                if not sec.is_vacuous:
+                    section_f1s.setdefault(name, []).append(sec.f1)
+
+        for name, vals in sorted(section_f1s.items(), key=lambda x: -sum(x[1]) / len(x[1])):
+            avg = sum(vals) / len(vals)
+            table.add_row(f"  {name}", f"{avg:.4f}")
+
+        console.print(table)
 
 
 @app.command()

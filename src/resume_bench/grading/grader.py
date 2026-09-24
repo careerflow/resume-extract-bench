@@ -5,7 +5,7 @@ from typing import Any
 
 from resume_bench.dataset.loader import load_split
 from resume_bench.grading.metrics import SECTION_SCHEMA_FIELDS, score_entity_list, score_flat_list, score_singleton
-from resume_bench.grading.models import GradingConfig, ResumeScore, SectionScore
+from resume_bench.grading.models import ExtractBenchScore, GradingConfig, ResumeScore, SectionScore
 from resume_bench.schema.sections import SectionKind, get_sections
 from resume_bench.settings import settings
 
@@ -189,6 +189,103 @@ def grade_pipelines(
             "completed": completed_count,
             "errors": errors,
             "completion_rate": completed_count / len(gt_by_id) if gt_by_id else 0.0,
+        }
+
+    return reports
+
+
+def grade_single_extractbench(
+    ground_truth: dict[str, Any],
+    prediction: dict[str, Any],
+    exclude_sections: set[str] | None = None,
+) -> ExtractBenchScore:
+    """Grade a single resume using ExtractBench-exact scoring."""
+    from resume_bench.grading.extractbench import eb_score_resume
+
+    cells = eb_score_resume(ground_truth, prediction, get_sections(), exclude_sections)
+    return ExtractBenchScore(cells=cells)
+
+
+def grade_pipelines_extractbench(
+    pipeline_names: list[str],
+    split: str = "test",
+) -> dict[str, dict[str, Any]]:
+    """Grade multiple pipelines using ExtractBench-exact cell-level scoring."""
+    from resume_bench.grading.extractbench import eb_score_resume
+
+    cases = load_split(split)
+    gt_by_id = {c.resume_id: c.ground_truth for c in cases}
+    sections = get_sections()
+
+    reports = {}
+
+    for name in pipeline_names:
+        predictions = _load_pipeline_results(name, split)
+
+        scores: list[ExtractBenchScore] = []
+        errors = 0
+
+        for resume_id, gt in gt_by_id.items():
+            pred = predictions.get(resume_id)
+
+            if pred is None:
+                errors += 1
+                scores.append(ExtractBenchScore(resume_id=resume_id, completed=False))
+                continue
+
+            cells = eb_score_resume(gt, pred, sections)
+            scores.append(ExtractBenchScore(resume_id=resume_id, cells=cells))
+
+        # Aggregate cell counts across all resumes
+        total_correct = sum(s.cells.correct for s in scores if s.completed)
+        total_expected = sum(s.cells.expected for s in scores if s.completed)
+        total_predicted = sum(s.cells.predicted for s in scores if s.completed)
+
+        from resume_bench.grading.models import CellCounts
+
+        agg = CellCounts(
+            correct=total_correct,
+            expected=total_expected,
+            predicted=total_predicted,
+        )
+
+        completed_count = sum(1 for s in scores if s.completed)
+
+        # Per-resume F1 average
+        resume_f1s = [s.cells.f1 for s in scores if s.completed]
+        avg_f1 = sum(resume_f1s) / len(resume_f1s) if resume_f1s else 0.0
+
+        grades_dir = settings.output_dir / name / split / "grades_extractbench"
+        grades_dir.mkdir(parents=True, exist_ok=True)
+
+        for s in scores:
+            grade_path = grades_dir / f"{s.resume_id}.grade.json"
+            grade_data = {
+                "resume_id": s.resume_id,
+                "completed": s.completed,
+                "correct": s.cells.correct,
+                "expected": s.cells.expected,
+                "predicted": s.cells.predicted,
+                "precision": round(s.cells.precision, 4),
+                "recall": round(s.cells.recall, 4),
+                "f1": round(s.cells.f1, 4),
+            }
+            with open(grade_path, "w") as f:
+                json.dump(grade_data, f, indent=2)
+
+        reports[name] = {
+            "micro_precision": round(agg.precision, 4),
+            "micro_recall": round(agg.recall, 4),
+            "micro_f1": round(agg.f1, 4),
+            "macro_f1": round(avg_f1, 4),
+            "total_cells": {
+                "correct": total_correct,
+                "expected": total_expected,
+                "predicted": total_predicted,
+            },
+            "total_resumes": len(gt_by_id),
+            "completed": completed_count,
+            "errors": errors,
         }
 
     return reports
