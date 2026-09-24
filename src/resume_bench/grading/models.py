@@ -57,6 +57,37 @@ class ResumeScore:
 
 
 @dataclass
+class CellCounts:
+    """Cell-level counts for ExtractBench-exact scoring."""
+
+    correct: int = 0
+    expected: int = 0
+    predicted: int = 0
+
+    @property
+    def precision(self) -> float:
+        return self.correct / self.predicted if self.predicted else 0.0
+
+    @property
+    def recall(self) -> float:
+        return self.correct / self.expected if self.expected else 0.0
+
+    @property
+    def f1(self) -> float:
+        p, r = self.precision, self.recall
+        return (2 * p * r / (p + r)) if (p + r) > 0 else 0.0
+
+
+@dataclass
+class ExtractBenchScore:
+    """Per-resume result from ExtractBench-exact scoring."""
+
+    resume_id: str = ""
+    cells: CellCounts = field(default_factory=CellCounts)
+    completed: bool = True
+
+
+@dataclass
 class GradingConfig:
     threshold: float = 0.5
     score_all_fields: bool = False
