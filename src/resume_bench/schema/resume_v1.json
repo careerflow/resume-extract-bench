@@ -8,13 +8,21 @@
       "type": "object",
       "description": "Basic personal and contact information",
       "properties": {
+        "prefix": {
+          "type": ["string", "null"],
+          "description": "Name prefix or honorific (e.g. 'Dr.', 'Mr.', 'Ms.', 'Prof.'). Null if no prefix is present."
+        },
         "fname": {
           "type": ["string", "null"],
-          "description": "First name of the person. Split the full name into first and last — everything before the final surname token is the first name (e.g. 'Jean Marie' from 'Jean Marie Schiraldi')."
+          "description": "First name of the person, including any middle names or initials. Split the full name into first and last — everything before the final surname token is the first name. For 'John Michael Smith', fname is 'John Michael'. For 'ALASTAIR K BIDWELL', fname is 'ALASTAIR K'. For 'Jean Marie Schiraldi', fname is 'Jean Marie'."
         },
         "lname": {
           "type": ["string", "null"],
-          "description": "Last name (surname) of the person. The final surname token from the full name (e.g. 'Schiraldi' from 'Jean Marie Schiraldi')."
+          "description": "Last name (surname) of the person. The final surname token from the full name. Do not include middle names or initials. For 'John Michael Smith', lname is 'Smith'. For 'ALASTAIR K BIDWELL', lname is 'BIDWELL'. For 'Jean Marie Schiraldi', lname is 'Schiraldi'."
+        },
+        "suffix": {
+          "type": ["string", "null"],
+          "description": "Name suffix or post-nominal (e.g. 'Jr.', 'III', 'MD', 'PhD', 'P.Eng.', 'CPA'). Null if no suffix is present."
         },
         "email": {
           "type": ["string", "null"],
@@ -102,7 +110,7 @@
           },
           "position": {
             "type": ["string", "null"],
-            "description": "Job title or role only, copied exactly from a structured experience entry. Do not take titles from narrative summary/profile/objective sections, and do not append text from dates, locations, or other fields."
+            "description": "Job title or role only, copied exactly from a structured experience entry. Do not take titles from narrative summary/profile/custom sections, and do not append text from compact timelines, adjacent dates, locations, or other fields."
           },
           "startMonth": {
             "type": ["integer", "null"],
@@ -128,18 +136,40 @@
             "type": ["string", "null"],
             "description": "City where the role is located (e.g. 'New York' from 'New York, NY'). Null if no city is stated."
           },
+          "state": {
+            "type": ["string", "null"],
+            "description": "State, province, or region where the role is located (e.g. 'NY' from 'New York, NY'). Null if no state is stated."
+          },
           "country": {
             "type": ["string", "null"],
             "description": "Country where the role is located. Null if no country is stated."
           },
+          "isRemote": {
+            "type": ["boolean", "null"],
+            "description": "true if the role is marked as remote. Look for keywords like 'Remote', 'Work from Home', 'WFH', 'Telecommute' in the location line, job title, or anywhere in the role entry. null if not indicated."
+          },
           "roleDescription": {
             "type": ["string", "null"],
-            "description": "Introductory text or role summary that appears before bullet points. Null if none."
+            "description": "All prose paragraphs that appear BEFORE the bullet points for this role, concatenated with newlines. This includes paragraphs under labels like 'Background', 'Position Overview', 'Role Summary', 'Overview', or any unlabeled introductory prose. Combine all such paragraphs into a single string. This is NOT a bullet point — do not include bullet-point content here. If the role has no introductory prose and starts directly with bullets, set this to null. Never duplicate content that appears in the description bullets."
+          },
+          "companyUrl": {
+            "type": ["object", "null"],
+            "properties": {
+              "href": {
+                "type": ["string", "null"],
+                "description": "URL address (link target)"
+              },
+              "label": {
+                "type": ["string", "null"],
+                "description": "The visible display text or label for this URL as shown in the resume."
+              }
+            },
+            "description": "Company website or profile URL if the resume visibly links the employer name. Preserve the visible label and href exactly as shown. null if no company link is present."
           },
           "description": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Array of individual bullet-point achievements or responsibilities. Each array element is one bullet. A bullet may wrap onto multiple visual lines; keep continuation lines in the same element. Strip bullet symbols (-, *, etc.) but preserve the complete visible text."
+            "description": "Array of individual bullet-point achievements or responsibilities. Each array element is one bullet. Do NOT include any text that already appears in roleDescription. A bullet may wrap onto multiple visual lines; keep continuation lines in the same element. Strip bullet symbols (-, *, •, etc.) but preserve the complete visible text."
           }
         }
       }
@@ -152,7 +182,7 @@
         "properties": {
           "institution": {
             "type": ["string", "null"],
-            "description": "Name of the educational institution (university, college, or school)"
+            "description": "Name of the educational institution, professional body, or issuing organization"
           },
           "area": {
             "type": ["string", "null"],
@@ -160,7 +190,7 @@
           },
           "studyType": {
             "type": ["string", "null"],
-            "description": "Type of degree or diploma (e.g. Bachelor's, Master's, PhD, Associate's, High School Diploma)"
+            "description": "Type of credential — degree, diploma, certification, membership, affiliation, license, or professional registration (e.g. Bachelor's, Master's, PhD, Associate's, High School Diploma, Affiliate Membership, Professional Registration, License)"
           },
           "score": {
             "type": ["string", "null"],
@@ -190,6 +220,10 @@
             "type": ["string", "null"],
             "description": "City where institution is located"
           },
+          "state": {
+            "type": ["string", "null"],
+            "description": "State, province, or region where institution is located. Null if not stated."
+          },
           "country": {
             "type": ["string", "null"],
             "description": "Country where institution is located"
@@ -197,7 +231,7 @@
           "description": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "List of education bullet points — coursework, honors, activities, etc. Do NOT include information already captured in other fields (score, institution, area, studyType, dates)."
+            "description": "List of education bullet points — coursework, honors, activities, etc. Do NOT include information already captured in other fields (score/GPA, institution, area, studyType, dates, city, country)."
           }
         }
       }
@@ -226,7 +260,17 @@
             "description": "Year the project ended as a 4-digit integer. Null if the project is ongoing or no end year is stated."
           },
           "url": {
-            "type": ["string", "null"],
+            "type": ["object", "null"],
+            "properties": {
+              "href": {
+                "type": ["string", "null"],
+                "description": "URL address (link target)"
+              },
+              "label": {
+                "type": ["string", "null"],
+                "description": "The visible display text or label for this URL as shown in the resume."
+              }
+            },
             "description": "Project link or repository URL, if present in the resume."
           },
           "companyName": {
@@ -236,6 +280,10 @@
           "city": {
             "type": ["string", "null"],
             "description": "City where the project was based. Null if not stated."
+          },
+          "state": {
+            "type": ["string", "null"],
+            "description": "State, province, or region where the project was based. Null if not stated."
           },
           "country": {
             "type": ["string", "null"],
@@ -277,6 +325,20 @@
           "date": {
             "type": ["string", "null"],
             "description": "Date of certification as written in the resume"
+          },
+          "url": {
+            "type": ["object", "null"],
+            "properties": {
+              "href": {
+                "type": ["string", "null"],
+                "description": "URL address (link target)"
+              },
+              "label": {
+                "type": ["string", "null"],
+                "description": "The visible display text or label for this URL as shown in the resume."
+              }
+            },
+            "description": "URL or link associated with the certification, if present in the resume. null if no link is shown."
           }
         }
       }
@@ -302,6 +364,20 @@
           "summary": {
             "type": ["string", "null"],
             "description": "Additional description of the award. Null if none."
+          },
+          "url": {
+            "type": ["object", "null"],
+            "properties": {
+              "href": {
+                "type": ["string", "null"],
+                "description": "URL address (link target)"
+              },
+              "label": {
+                "type": ["string", "null"],
+                "description": "The visible display text or label for this URL as shown in the resume."
+              }
+            },
+            "description": "URL or link associated with the award, if present in the resume. null if no link is shown."
           }
         }
       }
@@ -348,6 +424,10 @@
           "city": {
             "type": ["string", "null"],
             "description": "City where volunteering took place. Null if not stated."
+          },
+          "state": {
+            "type": ["string", "null"],
+            "description": "State, province, or region where volunteering took place. Null if not stated."
           },
           "country": {
             "type": ["string", "null"],
@@ -440,8 +520,18 @@
             "description": "Platform name (e.g. 'GitHub', 'Twitter', 'Portfolio')."
           },
           "url": {
-            "type": ["string", "null"],
-            "description": "Profile URL."
+            "type": ["object", "null"],
+            "properties": {
+              "href": {
+                "type": ["string", "null"],
+                "description": "URL address (link target)"
+              },
+              "label": {
+                "type": ["string", "null"],
+                "description": "The visible display text or label for this URL as shown in the resume. For profile links, use the network name (e.g. 'LinkedIn', 'GitHub')."
+              }
+            },
+            "description": "Profile URL link."
           }
         }
       }
@@ -454,19 +544,28 @@
         "properties": {
           "sectionTitle": {
             "type": ["string", "null"],
-            "description": "The exact section heading as it appears in the resume (e.g. 'Bar Admissions', 'Professional Associations')."
+            "description": "The heading text of this section as it appears in the resume. Extract verbatim — do not normalize or translate — but strip trailing punctuation such as colons or periods. REQUIRED for every custom section. A Career Summary that is not the dedicated summary/profile section must be represented here with sectionTitle exactly 'Career Summary'. If the section is a standalone line with no distinct heading above it, infer a concise section title from the content (e.g. the first key noun or phrase)."
           },
           "summary": {
             "type": ["string", "null"],
-            "description": "Optional introductory or summary text that appears at the top of the section before any bullet points. Null if the section has no introductory text."
+            "description": "Use when the section is a continuous prose paragraph OR when the section has sub-headings with content under each (e.g. a capabilities section with sub-titles like 'Communication', 'Teamwork'). For sections with sub-headings, format as markdown: wrap each sub-heading in **bold**, preserve bullet points as '- ' prefixed lines, and separate each sub-heading block with double newlines. Populate EXACTLY ONE of summary or description, never both."
           },
           "description": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Array of bullet points or individual entries in this section. Each array element is one bullet or line item. Strip bullet symbols but preserve the complete visible text."
+            "description": "Use when the section has multiple distinct entries (bullets, numbered items, separate roles/memberships/courses/certs) with NO sub-headings grouping them. Each entry becomes one string. If a bullet wraps across visual lines, include all continuation lines in that same string. Strip bullet symbols but preserve the complete visible text. Populate EXACTLY ONE of description or summary, never both."
           }
         }
       }
+    },
+    "layout": {
+      "type": "array",
+      "description": "A vertical sequence of layout blocks representing how sections are arranged on the page. Each element is either a full-width block (a list of section name strings) or a column group (a list of lists, one inner list per column from left to right). For single-column resumes, use a single full-width block: [[\"summary\", \"experience\", \"education\", \"skills\"]]. For multi-column or sidebar resumes, use a column group for the side-by-side portion.",
+      "items": {}
+    },
+    "sectionTitles": {
+      "type": "object",
+      "description": "Map of section names to the exact heading text used in the resume for that section. Extract verbatim — do not normalize or translate. Only include sections that have a visible heading in the document. Use standard section keys: experience, education, skills, projects, certifications, awards, volunteering, publications, languages, interests, profiles, personalSummary."
     }
   }
 }

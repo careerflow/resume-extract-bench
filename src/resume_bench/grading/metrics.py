@@ -16,24 +16,24 @@ _TEXT_BLOCK_FIELDS = {"summary", "roleDescription", "text"}
 SECTION_SCHEMA_FIELDS: dict[str, list[str]] = {
     "experience": [
         "company", "position", "startMonth", "startYear",
-        "endMonth", "endYear", "currentlyWorkHere", "city", "country",
-        "roleDescription",
+        "endMonth", "endYear", "currentlyWorkHere", "city", "state",
+        "country", "isRemote", "roleDescription", "companyUrl",
     ],
     "education": [
         "institution", "area", "studyType", "score",
         "startMonth", "startYear", "endMonth", "endYear",
-        "currentlyStudyHere", "city", "country",
+        "currentlyStudyHere", "city", "state", "country",
     ],
     "projects": [
         "name", "startYear", "endYear", "url", "companyName",
-        "city", "country", "startMonth", "endMonth", "inProgress",
+        "city", "state", "country", "startMonth", "endMonth", "inProgress",
     ],
-    "certifications": ["name", "issuer", "date"],
-    "awards": ["title", "awarder", "date", "summary"],
+    "certifications": ["name", "issuer", "date", "url"],
+    "awards": ["title", "awarder", "date", "summary", "url"],
     "volunteering": [
         "organization", "position", "startYear", "endYear",
         "currentlyVolunteerHere", "startMonth", "endMonth",
-        "city", "country", "summary",
+        "city", "state", "country", "summary",
     ],
     "publications": ["name", "publisher", "date", "summary"],
     "languages": ["name"],
@@ -50,6 +50,8 @@ def _is_empty(val) -> bool:
     if isinstance(val, str) and not val.strip():
         return True
     if isinstance(val, list) and not val:
+        return True
+    if isinstance(val, dict) and all(_is_empty(v) for v in val.values()):
         return True
     return False
 
@@ -115,6 +117,20 @@ def _entity_quality(
         if isinstance(gt_val, list):
             pred_list = pred_val if isinstance(pred_val, list) else []
             scores.append(_positional_bullet_score(gt_val, pred_list))
+        elif isinstance(gt_val, dict):
+            # Nested object (e.g. URL {href, label}) — score sub-fields
+            pred_dict = pred_val if isinstance(pred_val, dict) else {}
+            sub_scores = []
+            for sub_key in gt_val:
+                gt_sub = gt_val.get(sub_key)
+                pred_sub = pred_dict.get(sub_key)
+                if _is_empty(gt_sub) and _is_empty(pred_sub):
+                    sub_scores.append(1.0)
+                elif _is_empty(gt_sub) or _is_empty(pred_sub):
+                    sub_scores.append(0.0)
+                else:
+                    sub_scores.append(field_similarity(str(gt_sub), str(pred_sub)))
+            scores.append(sum(sub_scores) / len(sub_scores) if sub_scores else 1.0)
         elif isinstance(gt_val, bool):
             scores.append(1.0 if gt_val == bool(pred_val) else 0.0)
         elif isinstance(gt_val, (int, float)):

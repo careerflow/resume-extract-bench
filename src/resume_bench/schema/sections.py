@@ -48,7 +48,7 @@ SECTIONS_FULL: tuple[SectionSpec, ...] = (
     SectionSpec(
         "basics",
         SectionKind.SINGLETON,
-        ("fname", "lname", "email", "phone", "city", "state", "country", "hasPersonalPhoto", "linkedinUrl")
+        ("prefix", "fname", "lname", "suffix", "email", "phone", "city", "state", "country", "hasPersonalPhoto", "linkedinUrl")
     ),
     SectionSpec(
         "experience",
@@ -137,7 +137,7 @@ SECTIONS_TRIMMED: tuple[SectionSpec, ...] = (
     SectionSpec(
         "basics",
         SectionKind.SINGLETON,
-        ("fname", "lname", "email", "phone", "city", "state", "hasPersonalPhoto")
+        ("prefix", "fname", "lname", "suffix", "email", "phone", "city", "state", "hasPersonalPhoto")
     ),
     SectionSpec(
         "experience",
