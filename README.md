@@ -58,7 +58,7 @@ Each line of the JSONL file should be:
 
 ### Headline: Entity F1
 
-The primary metric is **macro Entity F1** averaged across non-vacuous sections (excluding basics).
+The primary metric is **macro Entity F1** averaged across all non-vacuous sections.
 
 For each section (experience, education, etc.):
 1. Predicted entities are aligned to ground truth entities using the **Hungarian algorithm** (optimal bipartite matching)
@@ -70,8 +70,8 @@ For each section (experience, education, etc.):
 
 ### Additional Metrics
 
-- **Basics Field Accuracy** - Per-field Jaro-Winkler accuracy on contact info (name, email, phone, location). Reported separately since basics is a singleton, not an entity list.
-- **Description Token F1** - Bag-of-words F1 for bullet-point text (experience descriptions, project descriptions)
+- **Basics Field Accuracy** - Per-field Jaro-Winkler accuracy on contact info (name, email, phone, location).
+- **Description Quality** - Positional edit distance ratio for bullet-point text: each bullet is compared index-to-index (bullet[0] vs bullet[0], etc.) using normalized Levenshtein distance. Missing or extra bullets score 0.
 - **Omission Rate** - Fraction of ground truth entities with no matching prediction (missed entities)
 - **Hallucination Rate** - Fraction of predicted entities with no matching ground truth (spurious entities)
 - **Cost and Latency** - Per-resume averages, surfaced in the leaderboard
