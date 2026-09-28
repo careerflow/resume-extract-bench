@@ -11,6 +11,8 @@ from resume_bench.providers.base import (
 )
 from resume_bench.providers.registry import register_provider
 
+_LLAMA_MAX_PROMPT = 10_000
+
 
 @register_provider("llamaextract")
 class LlamaExtractProvider(Provider):
@@ -29,6 +31,9 @@ class LlamaExtractProvider(Provider):
         client = LlamaCloud(api_key=settings.llama_cloud_api_key)
         tier = self.spec.config.get("tier", "agentic_plus")
 
+        # LlamaExtract enforces a 10K char system_prompt limit.
+        prompt = req.system_prompt[:_LLAMA_MAX_PROMPT] if req.system_prompt else ""
+
         try:
             with open(req.pdf_path, "rb") as f:
                 upload_response = client.files.create(file=f, purpose="extract")
@@ -41,7 +46,7 @@ class LlamaExtractProvider(Provider):
                     "data_schema": req.extraction_schema,
                     "tier": tier,
                     "confidence_scores": True,
-                    "system_prompt": req.system_prompt,
+                    "system_prompt": prompt,
                 },
             )
 

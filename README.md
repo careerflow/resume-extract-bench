@@ -10,14 +10,30 @@ pip install -e ".[dev]"
 # Download the dataset
 resume-bench download
 
-# Run a pipeline
+# Run a pipeline (text-based provider)
 resume-bench run openai_gpt-4o_text --split test --limit 5
 
-# Grade results
-resume-bench grade openai_gpt-4o_text --split test
+# Run LlamaExtract (PDF-based provider)
+resume-bench run llamaextract_agentic_plus --split test --limit 5
+
+# Run without cache (re-extract even if results exist)
+resume-bench run llamaextract_agentic_plus --split test --limit 5 --no-cache
+
+# Grade results (default: ExtractBench-exact scoring)
+resume-bench grade llamaextract_agentic_plus --split test
+
+# Grade with fuzzy entity-level scoring
+resume-bench grade llamaextract_agentic_plus --split test --fuzzy
+
+# Grade multiple pipelines at once
+resume-bench grade llamaextract_agentic_plus openai_gpt-4o_text --split test
 
 # View leaderboard
 resume-bench leaderboard --split test
+
+# Show help
+resume-bench --help
+resume-bench run --help
 ```
 
 ## Bring Your Own Predictions

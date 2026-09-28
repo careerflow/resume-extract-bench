@@ -686,21 +686,9 @@
       "type": "array",
       "description": "A vertical sequence of layout blocks representing how sections appear on the page. Each element is either a full-width block (a list of section name strings) or a column group (a list of lists, one per column from left to right). For single-column resumes, use one full-width block listing all sections top to bottom, e.g. [[\"basics\", \"summary\", \"experience\", \"education\", \"skills\"]]. For multi-column or sidebar resumes, use a column group for the side-by-side portion, e.g. [[\"basics\"], [[\"skills\", \"languages\"], [\"experience\", \"projects\"]], [\"interests\"]] where the first inner list is the left column and the second is the right column. Use standard keys for standard sections (summary, experience, education, skills, projects, certifications, awards, volunteering, publications, profiles, languages, interests) and the exact heading text for any custom/non-standard sections. Only include sections that actually exist in the document.",
       "items": {
-        "oneOf": [
-          {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Full-width block: a list of section name strings."
-          },
-          {
-            "type": "array",
-            "items": {
-              "type": "array",
-              "items": {"type": "string"}
-            },
-            "description": "Column group: a list of lists, one per column left to right."
-          }
-        ]
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "A layout block: a list of section name strings for a full-width block, or use nested arrays for column groups."
       }
     }
   }
