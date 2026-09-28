@@ -10,6 +10,28 @@ from resume_bench.schema.sections import SectionKind, get_sections
 from resume_bench.settings import settings
 
 
+# ---------------------------------------------------------------------------
+# Unwrap helpers — handle both wrapped {sectionTitle, items/text} and flat formats
+# ---------------------------------------------------------------------------
+
+def _unwrap_items(section_data):
+    """Extract the items list from a possibly-wrapped section."""
+    if isinstance(section_data, dict) and "items" in section_data:
+        return section_data.get("items", [])
+    if isinstance(section_data, list):
+        return section_data
+    return []
+
+
+def _unwrap_text(section_data):
+    """Extract the text string from a possibly-wrapped personalSummary."""
+    if isinstance(section_data, dict) and "text" in section_data:
+        return section_data.get("text")
+    if isinstance(section_data, str):
+        return section_data
+    return None
+
+
 def _load_pipeline_results(pipeline_name: str, split: str) -> dict[str, dict]:
     """Load all result files for a pipeline/split combination."""
     results_dir = settings.output_dir / pipeline_name / split
@@ -53,15 +75,15 @@ def grade_single(
             section_score = score_singleton(gt_dict, pred_dict, spec.key_fields, cfg)
 
         elif spec.kind == SectionKind.FLAT_LIST:
-            gt_list = gt_data if isinstance(gt_data, list) else []
-            pred_list = pred_data if isinstance(pred_data, list) else []
+            gt_list = _unwrap_items(gt_data)
+            pred_list = _unwrap_items(pred_data)
 
             section_score = score_flat_list(gt_list, pred_list, cfg)
 
         elif spec.kind == SectionKind.ENTITY_LIST:
             if spec.name == "personalSummary":
-                gt_text = gt_data if isinstance(gt_data, str) else ""
-                pred_text = pred_data if isinstance(pred_data, str) else ""
+                gt_text = _unwrap_text(gt_data) or ""
+                pred_text = _unwrap_text(pred_data) or ""
 
                 if not gt_text and not pred_text:
                     section_score = SectionScore(
@@ -83,8 +105,8 @@ def grade_single(
                         f1=round(f1, 4),
                     )
             else:
-                gt_list = gt_data if isinstance(gt_data, list) else []
-                pred_list = pred_data if isinstance(pred_data, list) else []
+                gt_list = _unwrap_items(gt_data)
+                pred_list = _unwrap_items(pred_data)
 
                 schema_fields = (
                     SECTION_SCHEMA_FIELDS.get(spec.name)

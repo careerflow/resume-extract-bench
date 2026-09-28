@@ -31,8 +31,10 @@ resume-bench grade-file my_predictions.jsonl --split test
 Each line of the JSONL file should be:
 
 ```json
-{"resume_id": "022c0307-...", "prediction": {"basics": {"fname": "...", ...}, "experience": [...], ...}}
+{"resume_id": "022c0307-...", "prediction": {"basics": {"fname": "...", ...}, "experience": {"sectionTitle": "Work Experience", "items": [...]}, ...}}
 ```
+
+> **Note:** Sections can be either wrapped objects (`"experience": {"sectionTitle": "...", "items": [...]}`) or flat arrays (`"experience": [...]`). The grader accepts both formats.
 
 ## Pipelines
 
@@ -82,11 +84,11 @@ For each section (experience, education, etc.):
 
 ## Schema
 
-The benchmark uses a 9-section resume schema:
+The benchmark uses a 14-section resume schema. Each array section is wrapped as `{sectionTitle, items}` and `personalSummary` as `{sectionTitle, text}`.
 
 | Section | Type | In Headline F1 |
 |---------|------|-----------------|
-| basics | Singleton (contact info) | No - reported as field accuracy |
+| basics | Singleton (contact info) | Yes - reported as field accuracy |
 | experience | Entity list | Yes |
 | education | Entity list | Yes |
 | projects | Entity list | Yes |
@@ -95,6 +97,11 @@ The benchmark uses a 9-section resume schema:
 | awards | Entity list | Yes |
 | volunteering | Entity list | Yes |
 | skills | Flat list (category + skills) | Yes |
+| publications | Entity list | Yes |
+| languages | Entity list | Yes |
+| interests | Entity list | Yes |
+| profiles | Entity list | Yes |
+| customSections | Entity list | Yes |
 
 See `src/resume_bench/schema/resume_v1.json` for the full JSON Schema.
 
