@@ -22,6 +22,28 @@ from resume_bench.schema.sections import SectionKind, SectionSpec
 
 
 # ---------------------------------------------------------------------------
+# Unwrap helpers — handle both wrapped {sectionTitle, items/text} and flat formats
+# ---------------------------------------------------------------------------
+
+def _unwrap_items(section_data):
+    """Extract the items list from a possibly-wrapped section."""
+    if isinstance(section_data, dict) and "items" in section_data:
+        return section_data.get("items", [])
+    if isinstance(section_data, list):
+        return section_data
+    return []
+
+
+def _unwrap_text(section_data):
+    """Extract the text string from a possibly-wrapped personalSummary."""
+    if isinstance(section_data, dict) and "text" in section_data:
+        return section_data.get("text")
+    if isinstance(section_data, str):
+        return section_data
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -214,12 +236,8 @@ def eb_score_resume(
 
         # -- Flat skills -------------------------------------------------------
         elif spec.kind == SectionKind.FLAT_LIST:
-            gt_items = gt.get(spec.name, [])
-            pred_items = pred.get(spec.name, [])
-            if not isinstance(gt_items, list):
-                gt_items = []
-            if not isinstance(pred_items, list):
-                pred_items = []
+            gt_items = _unwrap_items(gt.get(spec.name, {}))
+            pred_items = _unwrap_items(pred.get(spec.name, {}))
             gt_skills: list[str] = []
             pred_skills: list[str] = []
             for g in gt_items:
@@ -251,10 +269,8 @@ def eb_score_resume(
             # (internal repo wraps it as [{"text": "..."}] and uses entity-list path).
             # Match the internal repo's semantics: only count the side that has data.
             if spec.name == "personalSummary":
-                gt_text = gt.get(spec.name)
-                pred_text = pred.get(spec.name)
-                gt_str = gt_text if isinstance(gt_text, str) else ""
-                pred_str = pred_text if isinstance(pred_text, str) else ""
+                gt_str = _unwrap_text(gt.get(spec.name)) or ""
+                pred_str = _unwrap_text(pred.get(spec.name)) or ""
                 gt_empty = not gt_str.strip()
                 pred_empty = not pred_str.strip()
                 if gt_empty and pred_empty:
@@ -273,12 +289,8 @@ def eb_score_resume(
                         correct += 1
                 continue
 
-            gt_items = gt.get(spec.name, [])
-            pred_items = pred.get(spec.name, [])
-            if not isinstance(gt_items, list):
-                gt_items = []
-            if not isinstance(pred_items, list):
-                pred_items = []
+            gt_items = _unwrap_items(gt.get(spec.name, {}))
+            pred_items = _unwrap_items(pred.get(spec.name, {}))
             if not gt_items and not pred_items:
                 continue
 
