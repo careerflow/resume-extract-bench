@@ -18,13 +18,9 @@ from resume_bench.providers.base import (
 )
 from resume_bench.providers.pipelines import PIPELINES
 from resume_bench.providers.registry import create_provider
+from resume_bench.prompts.extraction_v1 import EXTRACTION_SYSTEM_PROMPT
 from resume_bench.schema import get_schema
 from resume_bench.settings import settings
-
-
-def _get_prompt() -> str:
-    prompt_path = Path(__file__).parent.parent / "prompts" / "extraction_v1.txt"
-    return prompt_path.read_text()
 
 
 def _output_dir(pipeline_name: str, split: str) -> Path:
@@ -113,13 +109,15 @@ def run_pipelines(
     use_cache: bool = True,
 ) -> dict[str, dict[str, int]]:
     """Run one or more pipelines on a dataset split."""
+    from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, MofNCompleteColumn, TimeElapsedColumn
+
     cases = load_split(split)
 
     if limit:
         cases = cases[:limit]
 
     schema = get_schema()
-    prompt = _get_prompt()
+    prompt = EXTRACTION_SYSTEM_PROMPT
 
     specs_by_name = {s.pipeline_name: s for s in PIPELINES}
     all_stats = {}
@@ -134,23 +132,45 @@ def run_pipelines(
 
         stats = {"extracted": 0, "cached": 0, "errors": 0}
 
-        with ThreadPoolExecutor(max_workers=concurrency) as executor:
-            futures = {
-                executor.submit(
-                    _run_single, provider, spec, case, schema, prompt, use_cache, out_dir
-                ): case
-                for case in cases
-            }
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TextColumn("[green]{task.fields[status]}"),
+            TimeElapsedColumn(),
+        ) as progress:
+            task = progress.add_task(
+                f"{name}", total=len(cases), status="starting..."
+            )
 
-            for future in as_completed(futures):
-                record = future.result()
+            with ThreadPoolExecutor(max_workers=concurrency) as executor:
+                futures = {
+                    executor.submit(
+                        _run_single, provider, spec, case, schema, prompt, use_cache, out_dir
+                    ): case
+                    for case in cases
+                }
 
-                if record.cached:
-                    stats["cached"] += 1
-                elif record.error:
-                    stats["errors"] += 1
-                else:
-                    stats["extracted"] += 1
+                for future in as_completed(futures):
+                    record = future.result()
+                    case = futures[future]
+
+                    if record.cached:
+                        stats["cached"] += 1
+                        label = "cached"
+                    elif record.error:
+                        stats["errors"] += 1
+                        label = "error"
+                    else:
+                        stats["extracted"] += 1
+                        label = "ok"
+
+                    done = stats["extracted"] + stats["cached"] + stats["errors"]
+                    progress.update(
+                        task, advance=1,
+                        status=f"{done}/{len(cases)} | {stats['extracted']} ok, {stats['cached']} cached, {stats['errors']} err",
+                    )
 
         all_stats[name] = stats
 
