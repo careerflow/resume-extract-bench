@@ -23,6 +23,38 @@ class PipelineSpec(BaseModel):
     notes: str = ""
 
 
+class DocumentInfo(BaseModel):
+    """Document metrics captured before extraction."""
+
+    page_count: int | None = None
+    file_size_bytes: int | None = None
+    char_count: int | None = None
+    word_count: int | None = None
+    token_count_estimate: int | None = None  # char_count // 4
+
+
+class ProviderUsage(BaseModel):
+    """Structured usage details from the provider API response."""
+
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
+    reasoning_tokens: int | None = None  # OpenAI reasoning, Google thoughts
+    cache_creation_tokens: int | None = None  # Anthropic
+    cache_read_tokens: int | None = None  # Anthropic
+    cached_input_tokens: int | None = None  # OpenAI prompt cache hits
+    credits_used: float | None = None  # Reducto/Extend
+    pages_billed: int | None = None  # LlamaExtract
+    pages_extracted: int | None = None  # LlamaExtract
+    request_id: str | None = None  # Provider job/request ID
+    finish_reason: str | None = None  # stop_reason / finish_reason
+    model_id: str | None = None  # Actual model used
+    system_fingerprint: str | None = None  # OpenAI checkpoint identifier
+    server_processing_ms: int | None = None  # Server-side processing time
+    confidence: float | None = None  # Document-level extraction confidence
+    confidence_reason: str | None = None  # Explanation for confidence level
+
+
 class ExtractionRequest(BaseModel):
     resume_id: str
     pdf_path: Path
@@ -44,6 +76,10 @@ class RunRecord(BaseModel):
     cost_usd: float | None = None
     started_at: datetime | None = None
     cached: bool = False
+    document: DocumentInfo | None = None
+    usage: ProviderUsage | None = None
+    retry_count: int = 0
+    cost_per_page_usd: float | None = None
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -79,6 +115,10 @@ class Provider(ABC):
         """Map raw provider output to the canonical resume schema."""
 
     def estimate_cost(self, raw: dict[str, Any]) -> float | None:
+        return None
+
+    def get_usage(self, raw: dict[str, Any]) -> ProviderUsage | None:
+        """Extract structured usage info from the raw extraction response."""
         return None
 
     def healthcheck(self) -> None:

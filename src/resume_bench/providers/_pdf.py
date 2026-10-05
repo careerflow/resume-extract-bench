@@ -4,6 +4,32 @@ from pathlib import Path
 
 import fitz
 
+from resume_bench.providers.base import DocumentInfo
+
+
+def get_document_info(pdf_path: Path) -> DocumentInfo:
+    """Capture document metrics from a PDF file."""
+    file_size = pdf_path.stat().st_size
+
+    doc = fitz.open(str(pdf_path))
+    page_count = len(doc)
+
+    char_count = 0
+    word_count = 0
+    for page in doc:
+        text = page.get_text()
+        char_count += len(text)
+        word_count += len(text.split())
+    doc.close()
+
+    return DocumentInfo(
+        page_count=page_count,
+        file_size_bytes=file_size,
+        char_count=char_count,
+        word_count=word_count,
+        token_count_estimate=char_count // 4 if char_count else 0,
+    )
+
 
 def pdf_to_text(pdf_path: Path) -> str:
     """Extract all text from a PDF using PyMuPDF."""
