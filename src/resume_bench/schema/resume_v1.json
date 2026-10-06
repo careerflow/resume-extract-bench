@@ -14,11 +14,11 @@
         },
         "fname": {
           "type": ["string", "null"],
-          "description": "First name of the person, including any middle names or initials. Split the full name into first and last — everything before the final surname token is the first name. For 'John Michael Smith', fname is 'John Michael'. For 'ALASTAIR K BIDWELL', fname is 'ALASTAIR K'. For 'Jean Marie Schiraldi', fname is 'Jean Marie'."
+          "description": "First name of the person, including any middle names or initials. Split the full name into first and last — everything before the final surname token is the first name. For 'John Michael Smith', fname is 'John Michael'. For 'ALASTAIR K BIDWELL', fname is 'ALASTAIR K'. For 'Jean Marie Schiraldi', fname is 'Jean Marie'. If only one name token exists, put it in fname and leave lname null."
         },
         "lname": {
           "type": ["string", "null"],
-          "description": "Last name (surname) of the person. The final surname token from the full name. Do not include middle names or initials. For 'John Michael Smith', lname is 'Smith'. For 'ALASTAIR K BIDWELL', lname is 'BIDWELL'. For 'Jean Marie Schiraldi', lname is 'Schiraldi'."
+          "description": "Last name (surname) of the person. The final surname token from the full name. Do not include middle names or initials. For 'John Michael Smith', lname is 'Smith'. For 'ALASTAIR K BIDWELL', lname is 'BIDWELL'. For 'Jean Marie Schiraldi', lname is 'Schiraldi'. For compound surnames like 'Van der Berg' or 'De la Cruz', treat the full compound as lname."
         },
         "suffix": {
           "type": ["string", "null"],
@@ -164,7 +164,7 @@
                 "description": "All prose paragraphs that appear BEFORE the bullet points for this role, concatenated with newlines. This includes paragraphs under labels like 'Background', 'Position Overview', 'Role Summary', 'Overview', or any unlabeled introductory prose. Combine all such paragraphs into a single string. This is NOT a bullet point — do not include bullet-point content here. If the role has no introductory prose and starts directly with bullets, set this to null. Never duplicate content that appears in the description bullets."
               },
               "companyUrl": {
-                "type": ["object", "null"],
+                "type": "object",
                 "properties": {
                   "href": {
                     "type": ["string", "null"],
@@ -175,7 +175,7 @@
                     "description": "The visible display text or label for this URL as shown in the resume."
                   }
                 },
-                "description": "Company website or profile URL if the resume visibly links the employer name. Preserve the visible label and href exactly as shown. null if no company link is present."
+                "description": "Company website or profile URL if the resume visibly links the employer name. Preserve the visible label and href exactly as shown. Set both href and label to null if no company link is present."
               },
               "description": {
                 "type": "array",
@@ -293,7 +293,7 @@
                 "description": "Year the project ended as a 4-digit integer. Null if the project is ongoing or no end year is stated."
               },
               "url": {
-                "type": ["object", "null"],
+                "type": "object",
                 "properties": {
                   "href": {
                     "type": ["string", "null"],
@@ -304,7 +304,7 @@
                     "description": "The visible display text or label for this URL as shown in the resume."
                   }
                 },
-                "description": "Project link or repository URL, if present in the resume."
+                "description": "Project link or repository URL, if present in the resume. Set both href and label to null if no link is present."
               },
               "companyName": {
                 "type": ["string", "null"],
@@ -382,7 +382,7 @@
                 "description": "Date of certification as written in the resume"
               },
               "url": {
-                "type": ["object", "null"],
+                "type": "object",
                 "properties": {
                   "href": {
                     "type": ["string", "null"],
@@ -393,7 +393,7 @@
                     "description": "The visible display text or label for this URL as shown in the resume."
                   }
                 },
-                "description": "URL or link associated with the certification, if present in the resume. null if no link is shown."
+                "description": "URL or link associated with the certification, if present in the resume. Set both href and label to null if no link is shown."
               }
             }
           }
@@ -430,7 +430,7 @@
                 "description": "Additional description of the award. Null if none."
               },
               "url": {
-                "type": ["object", "null"],
+                "type": "object",
                 "properties": {
                   "href": {
                     "type": ["string", "null"],
@@ -441,7 +441,7 @@
                     "description": "The visible display text or label for this URL as shown in the resume."
                   }
                 },
-                "description": "URL or link associated with the award, if present in the resume. null if no link is shown."
+                "description": "URL or link associated with the award, if present in the resume. Set both href and label to null if no link is shown."
               }
             }
           }
@@ -642,7 +642,7 @@
                 "description": "Platform name (e.g. 'GitHub', 'Twitter', 'Portfolio')."
               },
               "url": {
-                "type": ["object", "null"],
+                "type": "object",
                 "properties": {
                   "href": {
                     "type": ["string", "null"],
@@ -653,7 +653,7 @@
                     "description": "The visible display text or label for this URL as shown in the resume. For profile links, use the network name (e.g. 'LinkedIn', 'GitHub')."
                   }
                 },
-                "description": "Profile URL link."
+                "description": "Profile URL link. Set both href and label to null if no link is present."
               }
             }
           }
