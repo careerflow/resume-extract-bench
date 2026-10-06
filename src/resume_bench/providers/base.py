@@ -12,6 +12,7 @@ from pydantic import BaseModel
 class InputMode(str, Enum):
     PDF = "pdf"
     TEXT = "text"
+    IMAGES = "images"
 
 
 class PipelineSpec(BaseModel):
@@ -21,6 +22,7 @@ class PipelineSpec(BaseModel):
     config: dict[str, Any] = {}
     per_file_timeout_s: float = 600
     notes: str = ""
+    parse_source: str | None = None  # "llamaparse", "pymupdf", or None
 
 
 class DocumentInfo(BaseModel):
@@ -80,6 +82,9 @@ class RunRecord(BaseModel):
     usage: ProviderUsage | None = None
     retry_count: int = 0
     cost_per_page_usd: float | None = None
+    input_method: str | None = None  # "pdf_native", "rasterized_images", "llamaparse_text"
+    parse_cost_usd: float | None = None
+    parse_source: str | None = None  # "llamaparse", "pymupdf", or None
 
     model_config = {"arbitrary_types_allowed": True}
 

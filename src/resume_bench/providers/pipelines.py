@@ -179,148 +179,163 @@ PIPELINES: list[PipelineSpec] = [
         config={"model": "gemini-2.5-flash"},
     ),
     # ── OpenRouter models ────────────────────────────────────────────────
-    # Qwen family
+    # Input method routing:
+    #   PDF     — model provider accepts raw PDF natively (Gemini via Google)
+    #   IMAGES  — model is natively multimodal; pages rasterized to PNG via
+    #             pdf2image (poppler), matching ExtractBench methodology
+    #   TEXT    — text-only model ID; PDF parsed to markdown first
+    #             parse_source="llamaparse" → LlamaParse API
+    #             parse_source=None          → PyMuPDF text extraction (default)
+    #
+    # Qwen 3.5+ (natively multimodal / early fusion → rasterized images)
     PipelineSpec(
         pipeline_name="openrouter_qwen38_flash",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,
         config={"model": "qwen/qwen3.8-flash"},
     ),
     PipelineSpec(
         pipeline_name="openrouter_qwen38_flash_next",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,
         config={"model": "qwen/qwen3.8-flash-next"},
     ),
     PipelineSpec(
         pipeline_name="openrouter_qwen38_27b",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,
         config={"model": "qwen/qwen3.8-27b"},
     ),
     PipelineSpec(
         pipeline_name="openrouter_qwen36_35b",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,
         config={"model": "qwen/qwen3.6-35b-a3b"},
     ),
     PipelineSpec(
         pipeline_name="openrouter_qwen35_35b",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,
         config={"model": "qwen/qwen3.5-35b-a3b"},
     ),
     PipelineSpec(
         pipeline_name="openrouter_qwen35_9b",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,
         config={"model": "qwen/qwen3.5-9b"},
     ),
+    # Qwen 3.0 and older (text-only model IDs; separate VL variants exist → LlamaParse)
     PipelineSpec(
         pipeline_name="openrouter_qwen3_235b",
         provider_name="openrouter",
         input_mode=InputMode.TEXT,
+        parse_source="llamaparse",
         config={"model": "qwen/qwen3-235b-a22b"},
     ),
     PipelineSpec(
         pipeline_name="openrouter_qwen3_30b",
         provider_name="openrouter",
         input_mode=InputMode.TEXT,
+        parse_source="llamaparse",
         config={"model": "qwen/qwen3-30b-a3b"},
     ),
     PipelineSpec(
         pipeline_name="openrouter_qwen25_72b",
         provider_name="openrouter",
         input_mode=InputMode.TEXT,
+        parse_source="llamaparse",
         config={"model": "qwen/qwen2.5-72b-instruct"},
     ),
     PipelineSpec(
         pipeline_name="openrouter_qwen25_7b",
         provider_name="openrouter",
         input_mode=InputMode.TEXT,
+        parse_source="llamaparse",
         config={"model": "qwen/qwen2.5-7b-instruct"},
     ),
-    # Moonshot / Kimi
+    # Moonshot / Kimi (vision → rasterized images)
     PipelineSpec(
         pipeline_name="openrouter_kimi_k3",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,
         config={"model": "moonshotai/kimi-k3"},
     ),
     PipelineSpec(
         pipeline_name="openrouter_kimi_k2",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,
         config={"model": "moonshotai/kimi-k2"},
     ),
     PipelineSpec(
         pipeline_name="openrouter_kimi_vl_a3b",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,
         config={"model": "moonshotai/kimi-vl-a3b-thinking"},
     ),
     # Z-AI / GLM
     PipelineSpec(
         pipeline_name="openrouter_glm53_flash",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,  # GLM 5.3 is multimodal (text+image+video)
         config={"model": "z-ai/glm-5.3-flash"},
     ),
     PipelineSpec(
         pipeline_name="openrouter_glm4_32b",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.TEXT,  # GLM-4-32B is text-only (separate GLM-4V for vision)
+        parse_source="llamaparse",
         config={"model": "thudm/glm-4-32b"},
     ),
-    # Google (via OpenRouter)
+    # Google Gemini (via OpenRouter → native PDF passthrough)
     PipelineSpec(
         pipeline_name="openrouter_gemini38_flash",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.PDF,
         config={"model": "google/gemini-3.8-flash"},
     ),
     PipelineSpec(
         pipeline_name="openrouter_gemini35_flash",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.PDF,
         config={"model": "google/gemini-3.5-flash"},
     ),
+    # Google Gemma (vision → rasterized images)
     PipelineSpec(
         pipeline_name="openrouter_gemma4_26b",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,
         config={"model": "google/gemma-4-26b-a4b-it"},
     ),
     PipelineSpec(
         pipeline_name="openrouter_gemma4_e4b",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,
         config={"model": "google/gemma-4-e4b-it"},
     ),
     PipelineSpec(
         pipeline_name="openrouter_gemma3_27b",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,
         config={"model": "google/gemma-3-27b-it"},
     ),
-    # OpenGVLab / OpenBMB
+    # OpenGVLab / OpenBMB (vision → rasterized images)
     PipelineSpec(
         pipeline_name="openrouter_internvl35_14b",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,
         config={"model": "opengvlab/internvl3-14b"},
     ),
     PipelineSpec(
         pipeline_name="openrouter_minicpm_v45",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,
         config={"model": "openbmb/minicpm-v-4.5"},
     ),
-    # DeepSeek
+    # DeepSeek (natively multimodal → rasterized images)
     PipelineSpec(
         pipeline_name="openrouter_deepseek_v41_flash",
         provider_name="openrouter",
-        input_mode=InputMode.TEXT,
+        input_mode=InputMode.IMAGES,  # DeepSeek V4.1 Flash has native vision
         config={"model": "deepseek/deepseek-v4.1-flash"},
     ),
 ]

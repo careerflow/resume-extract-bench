@@ -3,7 +3,13 @@ from __future__ import annotations
 
 import json
 
-from resume_bench.providers.base import DocumentInfo, ProviderUsage, RunRecord
+from resume_bench.providers.base import (
+    DocumentInfo,
+    InputMode,
+    PipelineSpec,
+    ProviderUsage,
+    RunRecord,
+)
 
 
 class TestRunRecordBackwardCompat:
@@ -416,3 +422,135 @@ class TestProviderUsageNewFields:
         assert reloaded.server_processing_ms == 3200
         assert reloaded.confidence == 0.95
         assert reloaded.confidence_reason == "All fields extracted successfully"
+
+
+class TestInputModeImages:
+    """InputMode.IMAGES enum value."""
+
+    def test_images_value(self):
+        assert InputMode.IMAGES.value == "images"
+
+    def test_all_modes(self):
+        assert set(m.value for m in InputMode) == {"pdf", "text", "images"}
+
+
+class TestPipelineSpecParseSource:
+    """PipelineSpec with parse_source field."""
+
+    def test_parse_source_default_none(self):
+        spec = PipelineSpec(
+            pipeline_name="test",
+            provider_name="openrouter",
+            input_mode=InputMode.TEXT,
+        )
+        assert spec.parse_source is None
+
+    def test_parse_source_llamaparse(self):
+        spec = PipelineSpec(
+            pipeline_name="test",
+            provider_name="openrouter",
+            input_mode=InputMode.TEXT,
+            parse_source="llamaparse",
+        )
+        assert spec.parse_source == "llamaparse"
+
+    def test_images_mode_spec(self):
+        spec = PipelineSpec(
+            pipeline_name="test",
+            provider_name="openrouter",
+            input_mode=InputMode.IMAGES,
+            config={"model": "moonshotai/kimi-k3"},
+        )
+        assert spec.input_mode == InputMode.IMAGES
+        assert spec.parse_source is None
+
+
+class TestRunRecordInputMethod:
+    """RunRecord with input pipeline metadata fields."""
+
+    def test_new_fields_default_none(self):
+        record = RunRecord(resume_id="x", pipeline_name="y")
+        assert record.input_method is None
+        assert record.parse_cost_usd is None
+        assert record.parse_source is None
+
+    def test_new_fields_round_trip(self):
+        record = RunRecord(
+            resume_id="abc",
+            pipeline_name="openrouter_qwen38_flash",
+            latency_ms=3000,
+            input_method="llamaparse_text",
+            parse_cost_usd=0.0037,
+            parse_source="llamaparse",
+        )
+        dumped = json.loads(json.dumps(record.model_dump(mode="json"), default=str))
+        reloaded = RunRecord(**dumped)
+        assert reloaded.input_method == "llamaparse_text"
+        assert reloaded.parse_cost_usd == 0.0037
+        assert reloaded.parse_source == "llamaparse"
+
+    def test_rasterized_images_method(self):
+        record = RunRecord(
+            resume_id="abc",
+            pipeline_name="openrouter_kimi_k3",
+            input_method="rasterized_images",
+        )
+        assert record.input_method == "rasterized_images"
+        assert record.parse_source is None
+
+    def test_backward_compat_old_json(self):
+        """Old JSON without new fields should load without error."""
+        old = {
+            "resume_id": "x",
+            "pipeline_name": "y",
+            "latency_ms": 100,
+            "cost_usd": 0.01,
+        }
+        record = RunRecord(**old)
+        assert record.input_method is None
+        assert record.parse_cost_usd is None
+        assert record.parse_source is None
+
+
+class TestPdfToBase64Images:
+    """pdf_to_base64_images returns list of non-empty base64 strings."""
+
+    def test_returns_list_of_strings(self, tmp_path):
+        """Create a minimal PDF and verify rasterization."""
+        import fitz
+
+        # Create a 1-page PDF with some text
+        doc = fitz.open()
+        page = doc.new_page(width=200, height=200)
+        page.insert_text((50, 100), "Hello World")
+        pdf_path = tmp_path / "test.pdf"
+        doc.save(str(pdf_path))
+        doc.close()
+
+        from resume_bench.providers._pdf import pdf_to_base64_images
+
+        images = pdf_to_base64_images(pdf_path)
+        assert isinstance(images, list)
+        assert len(images) == 1
+        assert isinstance(images[0], str)
+        assert len(images[0]) > 100  # non-trivial base64 content
+
+    def test_multi_page(self, tmp_path):
+        """Multi-page PDF returns one image per page."""
+        import fitz
+
+        doc = fitz.open()
+        for i in range(3):
+            page = doc.new_page(width=200, height=200)
+            page.insert_text((50, 100), f"Page {i + 1}")
+        pdf_path = tmp_path / "multi.pdf"
+        doc.save(str(pdf_path))
+        doc.close()
+
+        from resume_bench.providers._pdf import pdf_to_base64_images
+
+        images = pdf_to_base64_images(pdf_path)
+        assert len(images) == 3
+        for img in images:
+            assert isinstance(img, str)
+            assert len(img) > 0

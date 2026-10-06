@@ -57,8 +57,13 @@ def _run_single(
         pass  # non-fatal — extraction proceeds without doc info
 
     text = None
+    parse_meta = None
     if spec.input_mode.value == "text":
-        text = pdf_to_text(case.pdf_path)
+        if spec.parse_source == "llamaparse":
+            from resume_bench.providers._pdf import pdf_to_markdown_llamaparse
+            text, parse_meta = pdf_to_markdown_llamaparse(case.pdf_path)
+        else:
+            text = pdf_to_text(case.pdf_path)
 
     req = ExtractionRequest(
         resume_id=case.resume_id,
@@ -85,6 +90,27 @@ def _run_single(
         if cost_usd is not None and doc_info and doc_info.page_count:
             cost_per_page = cost_usd / doc_info.page_count
 
+        # Determine input method from spec or raw response
+        input_method = None
+        if isinstance(raw, dict):
+            input_method = raw.get("input_method")
+        if input_method is None:
+            if spec.input_mode.value == "pdf":
+                input_method = "pdf_native"
+            elif spec.input_mode.value == "images":
+                input_method = "rasterized_images"
+            elif spec.parse_source == "llamaparse":
+                input_method = "llamaparse_text"
+            else:
+                input_method = "pymupdf_text"
+
+        parse_cost_usd = None
+        parse_source_val = spec.parse_source
+        if parse_meta:
+            parse_cost_usd = parse_meta.get("parse_cost_usd")
+            if parse_source_val is None:
+                parse_source_val = "llamaparse"
+
         record = RunRecord(
             resume_id=case.resume_id,
             pipeline_name=spec.pipeline_name,
@@ -97,6 +123,9 @@ def _run_single(
             usage=usage,
             retry_count=retry_count,
             cost_per_page_usd=cost_per_page,
+            input_method=input_method,
+            parse_cost_usd=parse_cost_usd,
+            parse_source=parse_source_val,
         )
 
         with open(result_path, "w") as f:

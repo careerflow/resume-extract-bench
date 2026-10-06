@@ -60,6 +60,10 @@ class OpenRouterProvider(Provider):
             raise ProviderConfigError("RESUME_BENCH_OPENROUTER_API_KEY not set")
 
     def extract(self, req: ExtractionRequest) -> dict[str, Any]:
+        from resume_bench.providers.base import InputMode
+
+        if self.spec.input_mode == InputMode.IMAGES:
+            return self._extract_images(req)
         if req.text is not None:
             return self._extract_text(req)
         return self._extract_pdf(req)
@@ -108,6 +112,36 @@ class OpenRouterProvider(Provider):
             {"role": "user", "content": user_content},
         ]
         return self._call_openrouter(messages, req)
+
+    def _extract_images(self, req: ExtractionRequest) -> dict[str, Any]:
+        """Vision-mode extraction: rasterize PDF pages to PNG and send as image_url blocks."""
+        import json
+
+        from resume_bench.providers._pdf import pdf_to_base64_images
+
+        images_b64 = pdf_to_base64_images(req.pdf_path)
+
+        prompt = (
+            f"Extract structured data from this resume according to the schema.\n\n"
+            f"Schema:\n```json\n{json.dumps(req.extraction_schema, indent=2)}\n```"
+        )
+
+        user_content: list[dict] = []
+        for img_b64 in images_b64:
+            user_content.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{img_b64}"},
+            })
+        user_content.append({"type": "text", "text": prompt})
+
+        messages = [
+            {"role": "system", "content": req.system_prompt},
+            {"role": "user", "content": user_content},
+        ]
+        result = self._call_openrouter(messages, req)
+        result["input_method"] = "rasterized_images"
+        result["page_count"] = len(images_b64)
+        return result
 
     def _call_openrouter(
         self,
