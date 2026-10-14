@@ -48,7 +48,7 @@ SECTIONS_FULL: tuple[SectionSpec, ...] = (
     SectionSpec(
         "basics",
         SectionKind.SINGLETON,
-        ("fname", "lname", "email", "phone", "city", "state", "country", "hasPersonalPhoto", "linkedinUrl")
+        ("prefix", "fname", "lname", "suffix", "email", "phone", "city", "state", "country", "hasPersonalPhoto", "linkedinUrl")
     ),
     SectionSpec(
         "experience",
@@ -126,7 +126,7 @@ SECTIONS_FULL: tuple[SectionSpec, ...] = (
 # Trimmed section specs — drops fields with 0% GT coverage
 #
 # Removed fields:
-#   basics: country
+#   (none currently — previously dropped basics.country but internal repo keeps it)
 #
 # Note: the other trimmed fields from the internal repo (experience.country,
 # education.startMonth/endMonth/currentlyStudyHere/city/country,
@@ -137,7 +137,7 @@ SECTIONS_TRIMMED: tuple[SectionSpec, ...] = (
     SectionSpec(
         "basics",
         SectionKind.SINGLETON,
-        ("fname", "lname", "email", "phone", "city", "state", "hasPersonalPhoto")
+        ("prefix", "fname", "lname", "suffix", "email", "phone", "city", "state", "country", "hasPersonalPhoto", "linkedinUrl")
     ),
     SectionSpec(
         "experience",
