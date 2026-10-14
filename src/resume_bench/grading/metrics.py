@@ -55,6 +55,24 @@ def _is_empty(val) -> bool:
     return False
 
 
+def _split_comma_skills(skills: list[str]) -> list[str]:
+    """Split comma-separated skill strings into individual skills.
+
+    Some LLMs extract "Python, Java, C++" as one entry instead of
+    ["Python", "Java", "C++"]. This splits on commas and filters empties.
+    """
+    result: list[str] = []
+    for s in skills:
+        if not isinstance(s, str):
+            result.append(s)
+            continue
+        if "," in s:
+            result.extend(part.strip() for part in s.split(",") if part.strip())
+        else:
+            result.append(s)
+    return result
+
+
 def _positional_bullet_score(gt_list: list, pred_list: list) -> float:
     """Score description bullets positionally using edit distance ratio.
 
@@ -241,6 +259,10 @@ def score_flat_list(
     pred_skills = []
     for group in pred_items:
         pred_skills.extend(group.get("skills", []))
+
+    # Split comma-separated skill strings ("Python, Java" -> ["Python", "Java"])
+    gt_skills = _split_comma_skills(gt_skills)
+    pred_skills = _split_comma_skills(pred_skills)
 
     gt_skills = list({s.lower().strip(): s for s in gt_skills}.values())
     pred_skills = list({s.lower().strip(): s for s in pred_skills}.values())

@@ -48,12 +48,39 @@ def _unwrap_text(section_data):
 # ---------------------------------------------------------------------------
 
 def _eb_normalize(s: object) -> str:
-    """Whitespace-collapse + lowercase + strip."""
+    """Whitespace-collapse + lowercase + strip non-semantic punctuation.
+
+    Keeps letters, digits, underscores (\\w), whitespace, '+', '#' so that
+    C++, C#, F# survive. Strips quotes, periods, commas, etc. so that
+    minor formatting differences (Master's vs Masters, B.S. vs BS, ' vs ")
+    don't cause binary mismatches.
+    """
     if s is None:
         return ""
     s = str(s).strip()
     s = re.sub(r"\s+", " ", s)
-    return s.lower()
+    s = s.lower()
+    s = re.sub(r"[^\w\s+#]", "", s)
+    s = re.sub(r" +", " ", s).strip()
+    return s
+
+
+def _split_comma_skills(skills: list[str]) -> list[str]:
+    """Split comma-separated skill strings into individual skills.
+
+    Some LLMs extract "Python, Java, C++" as one entry instead of
+    ["Python", "Java", "C++"]. This splits on commas and filters empties.
+    """
+    result: list[str] = []
+    for s in skills:
+        if not isinstance(s, str):
+            result.append(s)
+            continue
+        if "," in s:
+            result.extend(part.strip() for part in s.split(",") if part.strip())
+        else:
+            result.append(s)
+    return result
 
 
 def _eb_str_match(a: object, b: object) -> float:
@@ -244,6 +271,9 @@ def eb_score_resume(
                 gt_skills.extend(g.get("skills", []))
             for p in pred_items:
                 pred_skills.extend(p.get("skills", []))
+            # Split comma-separated skill strings ("Python, Java" -> ["Python", "Java"])
+            gt_skills = _split_comma_skills(gt_skills)
+            pred_skills = _split_comma_skills(pred_skills)
             gt_skills = list({s.lower().strip(): s for s in gt_skills}.values())
             pred_skills = list({s.lower().strip(): s for s in pred_skills}.values())
             if not gt_skills and not pred_skills:
