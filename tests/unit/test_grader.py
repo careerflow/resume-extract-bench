@@ -96,6 +96,88 @@ class TestGradeSingle:
         assert "basics" in score.headline_sections
         assert score.basics_field_accuracy > 0.9
 
+    def test_wrapped_sections(self):
+        """Grader handles wrapped {sectionTitle, items} format."""
+        gt = {
+            "basics": {"fname": "Jane", "lname": "Smith", "email": "jane@test.com"},
+            "experience": {
+                "sectionTitle": "Experience",
+                "items": [
+                    {"company": "Google", "position": "SWE", "description": ["Built features"]},
+                ],
+            },
+            "education": {
+                "sectionTitle": "Education",
+                "items": [
+                    {"institution": "MIT", "area": "CS"},
+                ],
+            },
+            "skills": {
+                "sectionTitle": "Skills",
+                "items": [{"category": "Lang", "skills": ["Python", "Go"]}],
+            },
+            "personalSummary": {
+                "sectionTitle": "Summary",
+                "text": "Experienced engineer.",
+            },
+        }
+        pred = {
+            "basics": {"fname": "Jane", "lname": "Smith", "email": "jane@test.com"},
+            "experience": {
+                "sectionTitle": "Experience",
+                "items": [
+                    {"company": "Google", "position": "SWE", "description": ["Built features"]},
+                ],
+            },
+            "education": {
+                "sectionTitle": "Education",
+                "items": [
+                    {"institution": "MIT", "area": "CS"},
+                ],
+            },
+            "skills": {
+                "sectionTitle": "Skills",
+                "items": [{"category": "Lang", "skills": ["Python", "Go"]}],
+            },
+            "personalSummary": {
+                "sectionTitle": "Summary",
+                "text": "Experienced engineer.",
+            },
+        }
+
+        score = grade_single(gt, pred)
+
+        assert score.macro_entity_f1 > 0.9
+
+    def test_wrapped_personal_summary(self):
+        """personalSummary accepts wrapped {sectionTitle, text} format."""
+        gt = {"personalSummary": {"sectionTitle": "Profile", "text": "Software engineer."}}
+        pred = {"personalSummary": {"sectionTitle": "Profile", "text": "Software engineer."}}
+
+        score = grade_single(gt, pred)
+
+        assert score.sections["personalSummary"].f1 == 1.0
+
+    def test_mixed_wrapped_and_flat(self):
+        """Grader handles GT in wrapped format and prediction in flat format."""
+        gt = {
+            "experience": {
+                "sectionTitle": "Work History",
+                "items": [
+                    {"company": "Google", "position": "SWE"},
+                ],
+            },
+        }
+        pred = {
+            "experience": [
+                {"company": "Google", "position": "SWE"},
+            ],
+        }
+
+        score = grade_single(gt, pred)
+
+        assert score.sections["experience"].f1 > 0.9
+
     def test_failed_resume_scores_zero(self):
         from resume_bench.grading.models import ResumeScore, SectionScore
         from resume_bench.schema.sections import SECTIONS
