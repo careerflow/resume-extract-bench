@@ -54,7 +54,7 @@
         },
         "targetJobTitle": {
           "type": ["string", "null"],
-          "description": "Desired or target job title from the resume header or objective. Do NOT infer from work experience history."
+          "description": "Desired or target job title ONLY if explicitly written as a headline, objective, or target role label at the top of the resume (e.g. 'Seeking: Software Engineer', 'Objective: Data Analyst'). Must be copied VERBATIM from the document. Set to null if no explicit target/desired title is present. Do NOT infer or fabricate from work experience, current job title, or any other section. If in doubt, set to null."
         },
         "dob": {
           "type": ["string", "null"],
@@ -161,7 +161,7 @@
               },
               "roleDescription": {
                 "type": ["string", "null"],
-                "description": "All prose paragraphs that appear BEFORE the bullet points for this role, concatenated with newlines. This includes paragraphs under labels like 'Background', 'Position Overview', 'Role Summary', 'Overview', or any unlabeled introductory prose. Combine all such paragraphs into a single string. This is NOT a bullet point — do not include bullet-point content here. If the role has no introductory prose and starts directly with bullets, set this to null. Never duplicate content that appears in the description bullets."
+                "description": "Non-bulleted prose text that appears within an experience entry — typically BEFORE the bullet points but can also appear after them. This is continuous paragraph text (no bullet symbols, no dashes, no numbered lists). It includes introductory paragraphs, role overviews, background context, or any free-form text blocks within the role entry. Copy the text VERBATIM from the resume — do not rephrase, summarize, or paraphrase. Concatenate multiple prose paragraphs with newlines. CRITICAL DISTINCTION: roleDescription = continuous prose paragraphs (no bullet markers); description[] = individual bullet points (lines with bullet markers). Never put bullet-point content in roleDescription, and never put prose paragraphs in the description array. Set to null if the role has NO prose text (only bullets or nothing)."
               },
               "companyUrl": {
                 "type": "object",
