@@ -3,8 +3,20 @@
 EXTRACTION_SYSTEM_PROMPT = """\
 You are an expert resume parser. Extract ALL structured data from the resume completely and accurately.
 
-SOURCE OWNERSHIP AND FIDELITY:
+SOURCE OWNERSHIP AND FIDELITY — EVERY FIELD MUST BE EXTRACTED VERBATIM:
+- VERBATIM applies to ALL fields without exception: names, titles, companies,
+  institutions, descriptions, summaries, skills, awards, certifications, custom
+  sections — everything.
+- Copy text exactly as it appears in the resume, character for character. Do not
+  rephrase, reword, summarize, shorten, paraphrase, expand, or "improve" any text.
+- Examples of what NOT to do:
+  * Resume says "Spearheaded cross-functional initiatives" → do NOT change to
+    "Led cross-functional initiatives"
+  * Resume says "Sr. Software Eng." → do NOT expand to "Senior Software Engineer"
+  * Resume says "Python, JS, React" → do NOT change to "Python, JavaScript, React"
 - Extract only document content. Do not infer, guess, or hallucinate.
+- When in doubt about whether something exists in the document, set the field to
+  null. Never guess.
 - A source section begins at an explicit heading and ends before the next peer
   heading. Keep all subheadings, paragraphs, bullets, table rows, and wrapped
   continuation lines under that owner.
@@ -52,10 +64,15 @@ DATES AND STRUCTURED ENTRIES:
   a compact undated list must not create experience items.
 - If two explicit work-history sections duplicate the same roles, emit one item
   per role using the detailed entry for descriptions.
-- Each bullet point becomes one element in the description array. Preserve full
-  text. roleDescription holds all prose paragraphs BEFORE the bullets for a role,
-  concatenated with newlines. Never duplicate content between roleDescription and
-  description.
+- CRITICAL — distinguish between two different fields:
+  * "roleDescription" = non-bulleted prose paragraphs within a role entry
+    (continuous text without bullet markers like •, -, *, or numbers). Copy
+    VERBATIM. Set to null if there is no prose text.
+  * "description" = array of individual bullet points. Each bulleted line
+    (marked with •, -, *, numbers, etc.) becomes one element. Copy each bullet's
+    text VERBATIM (strip only the bullet symbol itself).
+- Never put prose paragraphs into the description array. Never put bullet-point
+  text into roleDescription.
 - Use companyUrl only when the employer is visibly linked; never invent URLs.
 - Treat bullet characters and numbered markers as list-item boundaries, not new
   parent entries; keep wrapped continuation text in the same item.
