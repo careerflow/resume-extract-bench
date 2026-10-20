@@ -15,6 +15,8 @@ SOURCE OWNERSHIP AND FIDELITY — EVERY FIELD MUST BE EXTRACTED VERBATIM:
   * Resume says "Sr. Software Eng." → do NOT expand to "Senior Software Engineer"
   * Resume says "Python, JS, React" → do NOT change to "Python, JavaScript, React"
 - Extract only document content. Do not infer, guess, or hallucinate.
+- For location fields (city, state, country): extract only what is explicitly
+  written. Do not infer country from city or state.
 - When in doubt about whether something exists in the document, set the field to
   null. Never guess.
 - A source section begins at an explicit heading and ends before the next peer
@@ -28,6 +30,7 @@ SOURCE OWNERSHIP AND FIDELITY — EVERY FIELD MUST BE EXTRACTED VERBATIM:
   contact details. Contact and personal information belong only in basics.
 - Do not populate a field merely because it exists. Preserve source order and
   exact visible wording; do not summarize, paraphrase, or omit content.
+- For multi-column layouts, read each column top to bottom, left column first.
 - Remove bullet symbols only where the target field requires structured values.
   Keep summary/profile bullets as bullets. Extract URLs exactly as shown.
 - Deduplicate items that are exact duplicates within the same section.
@@ -40,8 +43,11 @@ SECTION BOUNDARIES -- each item belongs in exactly one section:
 - Job accomplishments and KPIs from experience bullets -> experience description (NOT awards)
 - Board memberships and volunteer roles -> volunteering (NOT awards)
 - Professional memberships and affiliations -> certifications (NOT education)
+- Internships with employer, title, dates, and responsibilities -> experience (NOT customSections)
 - Publications and research papers -> publications (NOT experience or customSections)
-- Spoken/written natural languages -> languages (NOT skills; programming languages go in skills)
+- Spoken/written natural languages -> languages (NOT skills; programming languages go in skills).
+  Separate the language name from proficiency: "name" = language only (e.g. "English"),
+  "level" = proficiency as written (e.g. "Native", "Fluent", "B2"). Null if not stated.
 - Hobbies and interests -> interests (NOT customSections)
 - Online profile links (GitHub, portfolio, Twitter) -> profiles (LinkedIn goes in basics.linkedinUrl)
 - Awards only from sections whose heading contains "Awards" (e.g. "Awards",
@@ -55,6 +61,13 @@ DATES AND STRUCTURED ENTRIES:
 - Parse month/year ranges into the schema's integer month and year fields. A
   current marker (Present, Current) sets the corresponding currently* boolean to
   true with null end month/year.
+- If only a year is given (e.g. "2023"), set the year field and leave the month
+  field null.
+- If only ONE date appears for a role/education entry (not a range), treat it as
+  the end date (endMonth/endYear). Leave start fields null.
+- Abbreviated year formats: "'21" = 2021. "Jun'21" = June 2021.
+- Seasons or quarters ("Summer 2022", "Q3 2021"): set the year only, leave month
+  null. Do NOT convert to a specific month.
 - For multi-entry sections, start a new item only when a new entry identity
   appears (employer, institution, organization, project). Associate every
   following bullet, paragraph, and continuation with that item until the next
@@ -73,6 +86,8 @@ DATES AND STRUCTURED ENTRIES:
     text VERBATIM (strip only the bullet symbol itself).
 - Never put prose paragraphs into the description array. Never put bullet-point
   text into roleDescription.
+- Multiple titles under one employer with separate date ranges: create separate
+  experience entries, each with its own description bullets.
 - Use companyUrl only when the employer is visibly linked; never invent URLs.
 - Treat bullet characters and numbered markers as list-item boundaries, not new
   parent entries; keep wrapped continuation text in the same item.
@@ -94,10 +109,14 @@ SKILLS:
 CUSTOM AND SUMMARY SECTIONS:
 - A custom section requires one real explicit heading and must not also appear in
   a standard field. Preserve every subheading and source item.
-- For custom sections with subheadings, use summary markdown: **subheading**,
-  then each bullet as "- ", with blank lines between groups. Use description only
-  for flat entries without subheading groups. Populate EXACTLY ONE of summary or
-  description, never both.
+- CRITICAL — same prose vs bullets distinction as experience:
+  * "description" = array of discrete entries — bulleted, numbered, OR unbulleted
+    list items (one entry per line). Use when the content is a list of distinct
+    items. Copy each VERBATIM.
+  * "summary" = continuous prose text (sentences and paragraphs). Use when the
+    content reads as flowing text, not a list of entries. Copy VERBATIM.
+  * A section can have both summary (prose intro) and description (list items)
+    if both are present.
 - Identify personalSummary semantically from the content -- concise candidate-
   overview prose near the beginning. Preserve paragraph boundaries with blank
   lines and preserve bullets when the source is bulleted.
