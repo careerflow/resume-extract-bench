@@ -44,24 +44,6 @@ SECTION_SCHEMA_FIELDS: dict[str, list[str]] = {
 }
 
 
-def _split_comma_skills(skills: list[str]) -> list[str]:
-    """Split comma-separated skill strings into individual skills.
-
-    Some LLMs extract "Python, Java, C++" as one entry instead of
-    ["Python", "Java", "C++"]. This splits on commas and filters empties.
-    """
-    result: list[str] = []
-    for s in skills:
-        if not isinstance(s, str):
-            result.append(s)
-            continue
-        if "," in s:
-            result.extend(part.strip() for part in s.split(",") if part.strip())
-        else:
-            result.append(s)
-    return result
-
-
 def _is_empty(val) -> bool:
     """Check if a value is effectively empty/null."""
     if val is None:
@@ -193,7 +175,6 @@ def _entity_quality(
             elif pred_has:
                 scores.append(0.0)
             # both empty → skip (no description to score)
-
 
     return sum(scores) / len(scores) if scores else 1.0
 
