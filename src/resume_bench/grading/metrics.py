@@ -4,7 +4,7 @@ from typing import Sequence
 
 from resume_bench.grading.alignment import align_entities
 from resume_bench.grading.models import GradingConfig, SectionScore
-from resume_bench.grading.text import edit_distance_ratio, field_similarity, token_f1
+from resume_bench.grading.text import edit_distance_ratio, field_similarity
 
 # String fields that contain prose/text blocks rather than short identity values.
 # These are scored with edit_distance_ratio (order-sensitive character comparison)
@@ -73,24 +73,6 @@ def _is_empty(val) -> bool:
     if isinstance(val, dict) and all(_is_empty(v) for v in val.values()):
         return True
     return False
-
-
-def _split_comma_skills(skills: list[str]) -> list[str]:
-    """Split comma-separated skill strings into individual skills.
-
-    Some LLMs extract "Python, Java, C++" as one entry instead of
-    ["Python", "Java", "C++"]. This splits on commas and filters empties.
-    """
-    result: list[str] = []
-    for s in skills:
-        if not isinstance(s, str):
-            result.append(s)
-            continue
-        if "," in s:
-            result.extend(part.strip() for part in s.split(",") if part.strip())
-        else:
-            result.append(s)
-    return result
 
 
 def _positional_bullet_score(gt_list: list, pred_list: list) -> float:
@@ -189,7 +171,7 @@ def _entity_quality(
             pred_has = isinstance(pred_desc, list) and pred_desc
             if gt_has:
                 pred_list = pred_desc if pred_has else []
-                scores.append(_positional_bullet_score(gt_desc, pred_list))
+                scores.append(_positional_bullet_score(gt_desc or [], pred_list or []))
             elif pred_has:
                 scores.append(0.0)
             # both empty → skip (no description to score)
@@ -209,9 +191,10 @@ def score_singleton(
     gt: dict,
     pred: dict,
     key_fields: Sequence[str],
-    cfg: GradingConfig = GradingConfig(),
+    cfg: GradingConfig = GradingConfig(),  # noqa: ARG001 — kept for API consistency
 ) -> SectionScore:
     """Score a singleton section (basics) - per-field accuracy."""
+    del cfg  # unused but kept in signature for API consistency with other scorers
     field_scores = []
     field_acc = {}
 
