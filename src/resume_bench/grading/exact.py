@@ -15,9 +15,53 @@ from typing import Sequence
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-from resume_bench.grading.metrics import SECTION_SCHEMA_FIELDS, _is_empty
 from resume_bench.grading.models import CellCounts
 from resume_bench.schema.sections import SectionKind, SectionSpec
+
+
+# All scalar fields per section type (excludes 'description' arrays which are
+# handled separately).
+SECTION_SCHEMA_FIELDS: dict[str, list[str]] = {
+    "experience": [
+        "company", "position", "startMonth", "startYear",
+        "endMonth", "endYear", "currentlyWorkHere", "city", "state",
+        "country", "isRemote", "roleDescription", "companyUrl",
+    ],
+    "education": [
+        "institution", "area", "studyType", "score",
+        "startMonth", "startYear", "endMonth", "endYear",
+        "currentlyStudyHere", "city", "state", "country",
+    ],
+    "projects": [
+        "name", "startYear", "endYear", "url", "companyName",
+        "city", "state", "country", "startMonth", "endMonth", "inProgress",
+    ],
+    "certifications": ["name", "issuer", "date", "url"],
+    "awards": ["title", "awarder", "date", "summary", "url"],
+    "volunteering": [
+        "organization", "position", "startYear", "endYear",
+        "currentlyVolunteerHere", "startMonth", "endMonth",
+        "city", "state", "country", "summary",
+    ],
+    "publications": ["name", "publisher", "date", "summary"],
+    "languages": ["name", "level"],
+    "interests": ["name"],
+    "profiles": ["network", "url"],
+    "customSections": ["sectionTitle", "summary"],
+    "personalSummary": ["text"],
+}
+
+
+def _is_empty(val) -> bool:
+    if val is None:
+        return True
+    if isinstance(val, str) and not val.strip():
+        return True
+    if isinstance(val, list) and not val:
+        return True
+    if isinstance(val, dict) and all(_is_empty(v) for v in val.values()):
+        return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -151,8 +195,8 @@ def _rb_align_entities(
 ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
     """Align entities using Hungarian algorithm on cell-mismatch cost.
 
-    Unlike the fuzzy aligner, there is **no** similarity threshold -- all
-    assignments from the Hungarian solution are kept.
+    There is **no** similarity threshold -- all assignments from the
+    Hungarian solution are kept.
 
     Returns ``(matched_pairs, missed_gt_indices, spurious_pred_indices)``.
     """

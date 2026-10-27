@@ -34,13 +34,14 @@ from typing import Sequence
 __all__ = ["score_resume_strict", "verbatim_normalize"]
 
 from resume_bench.grading.exact import (
+    SECTION_SCHEMA_FIELDS,
+    _is_empty,
     _rb_align_entities,
     _rb_normalize,
     _split_comma_skills,
     _unwrap_items,
     _unwrap_text,
 )
-from resume_bench.grading.metrics import SECTION_SCHEMA_FIELDS, _is_empty
 from resume_bench.schema.sections import SectionKind, SectionSpec
 
 _OFFICIAL_NORMALIZE = _rb_normalize

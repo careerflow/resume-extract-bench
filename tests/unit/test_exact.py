@@ -182,7 +182,7 @@ class TestEbAlignEntities:
         assert spurious == []
 
     def test_partial_match_no_threshold(self):
-        """Unlike fuzzy alignment, EB keeps all assignments (no threshold)."""
+        """ResumeBench keeps all assignments (no similarity threshold)."""
         gt = [{"company": "Google"}]
         pred = [{"company": "Amazon"}]
         matched, missed, spurious = _rb_align_entities(gt, pred, ["company"])

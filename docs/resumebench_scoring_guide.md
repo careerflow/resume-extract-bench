@@ -148,8 +148,8 @@ Output per resume at `./output/{pipeline_name}/{split}/{resume_id}.result.json`:
 # ResumeBench-exact scoring (default -- binary 0/1 cells)
 python -m resume_bench.cli grade llamaextract_agentic_plus openai_gpt-5.6-sol_text
 
-# Legacy fuzzy scoring (Jaro-Winkler + edit distance, partial credit)
-python -m resume_bench.cli grade llamaextract_agentic_plus --fuzzy
+# Grade with ResumeBench-exact (binary 0/1 cells)
+python -m resume_bench.cli grade llamaextract_agentic_plus openai_gpt-5.6-sol_text
 ```
 
 ResumeBench grades go to `./output/{pipeline_name}/{split}/grades_exact/{resume_id}.grade.json`:
@@ -181,7 +181,7 @@ openai_gpt-5.6-sol_text
 
 ```bash
 python -m resume_bench.cli leaderboard
-python -m resume_bench.cli leaderboard --fuzzy  # legacy fuzzy leaderboard
+python -m resume_bench.cli leaderboard
 ```
 
 ```
@@ -324,7 +324,7 @@ Examples:
 | `true` | `true` | **1** | Exact bool match |
 | `true` | `false` | **0** | Different bool |
 
-**`_is_empty()` definition** (`src/resume_bench/grading/metrics.py:65-75`): `None`, empty strings (after strip), empty lists, or dicts where all values are empty.
+**`_is_empty()` definition** (`src/resume_bench/grading/exact.py`): `None`, empty strings (after strip), empty lists, or dicts where all values are empty.
 
 ### Entity Alignment (Hungarian Algorithm)
 
@@ -332,9 +332,9 @@ Examples:
 
 For sections with multiple entities (experience, education, etc.), GT entities must be matched to predicted entities before cell comparison.
 
-1. **Cost matrix**: For each GT entity `i` and pred entity `j`, count the number of mismatched cells across all scalar fields + description bullets (`_eb_cell_mismatch_count()`).
+1. **Cost matrix**: For each GT entity `i` and pred entity `j`, count the number of mismatched cells across all scalar fields + description bullets (`_rb_cell_mismatch_count()`).
 2. **Hungarian algorithm** (`scipy.optimize.linear_sum_assignment`): Find the assignment that minimizes total cell mismatches.
-3. **No threshold**: Every assignment from the Hungarian solution is kept, regardless of match quality. This differs from the fuzzy scorer which uses a 0.5 Jaro-Winkler threshold.
+3. **No threshold**: Every assignment from the Hungarian solution is kept, regardless of match quality.
 4. **Unmatched GT entities**: All their cells count toward `expected` only (hurts recall).
 5. **Unmatched pred entities**: All their cells count toward `predicted` only (hurts precision).
 
@@ -511,7 +511,7 @@ f1        = 2 * 0.9615 * 0.9259 / (0.9615 + 0.9259) = 0.9434
 
 ### Scalar Fields Per Section (`SECTION_SCHEMA_FIELDS`)
 
-These are the fields scored as individual cells per entity in ResumeBench-exact mode. Defined in `src/resume_bench/grading/metrics.py:16-44`.
+These are the fields scored as individual cells per entity. Defined in `src/resume_bench/grading/exact.py`.
 
 ```
 experience (13):    company, position, startMonth, startYear, endMonth, endYear,
@@ -751,12 +751,10 @@ Console output: ranked table of pipeline F1 scores
 | File | Purpose |
 |------|---------|
 | `src/resume_bench/cli.py` | CLI entry point: `download`, `run`, `grade`, `leaderboard`, `grade-file`, `validate` |
-| `src/resume_bench/grading/exact.py` | ResumeBench scorer: `rb_score_resume()`, `_rb_normalize()`, `_rb_align_entities()`, `_split_comma_skills()` |
-| `src/resume_bench/grading/grader.py` | Orchestrator: `grade_single_exact()`, `grade_pipelines_exact()`, `grade_single()` (fuzzy) |
-| `src/resume_bench/grading/models.py` | Data classes: `CellCounts`, `ResumeBenchScore`, `ResumeScore`, `SectionScore` |
-| `src/resume_bench/grading/metrics.py` | `SECTION_SCHEMA_FIELDS`, `_is_empty()`, `_split_comma_skills()`, `_positional_bullet_score()` |
-| `src/resume_bench/grading/text.py` | `edit_distance_ratio()`, `field_similarity()` (Jaro-Winkler), `token_f1()` |
-| `src/resume_bench/grading/alignment.py` | `align_entities()` -- Hungarian alignment for fuzzy scoring |
+| `src/resume_bench/grading/exact.py` | ResumeBench-exact scorer: `rb_score_resume()`, `_rb_normalize()`, `_rb_align_entities()`, `SECTION_SCHEMA_FIELDS` |
+| `src/resume_bench/grading/strict.py` | ResumeBench-Strict scorer: `score_resume_strict()`, `verbatim_normalize()` |
+| `src/resume_bench/grading/grader.py` | Orchestrator: `grade_single_exact()`, `grade_pipelines_exact()`, `grade_single_strict()` |
+| `src/resume_bench/grading/models.py` | Data classes: `CellCounts`, `ResumeBenchScore` |
 | `src/resume_bench/schema/sections.py` | `SECTIONS_FULL`, `SECTIONS_TRIMMED`, `SectionSpec`, `get_sections()` |
 | `src/resume_bench/schema/resume_v1.json` | Full JSON schema definition |
 | `src/resume_bench/runner/runner.py` | Extraction runner: `run_pipelines()`, caching, concurrency |
@@ -766,15 +764,3 @@ Console output: ranked table of pipeline F1 scores
 | `src/resume_bench/dataset/loader.py` | HuggingFace download + JSONL loading: `download_dataset()`, `load_split()` |
 | `src/resume_bench/dataset/models.py` | `TestCase` dataclass (resume_id, pdf_path, ground_truth, difficulty) |
 | `src/resume_bench/settings.py` | Pydantic settings with `RESUME_BENCH_` env prefix |
-
-### ResumeBench vs Fuzzy Scoring -- Which to Use
-
-| | ResumeBench-exact (default) | Fuzzy (`--fuzzy`) |
-|---|---|---|
-| **Cell scoring** | Binary 0/1 after normalization | Partial credit (Jaro-Winkler 0.0-1.0) |
-| **Description bullets** | Positional exact match per bullet | Positional edit distance ratio |
-| **Entity alignment** | Hungarian on cell-mismatch count, no threshold | Hungarian on Jaro-Winkler similarity, 0.5 threshold |
-| **Skills** | Flatten + comma-split + dedup + Hungarian exact | Flatten + comma-split + dedup + Hungarian fuzzy |
-| **personalSummary** | Single cell, exact match | Edit distance ratio |
-| **Primary metric** | `macro_f1` (mean of per-resume F1) | `macro_entity_f1` (mean of per-section F1 means) |
-| **Use when** | Benchmarking, leaderboards, publication | Debugging, understanding partial matches |
