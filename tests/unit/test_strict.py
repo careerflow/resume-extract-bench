@@ -1,4 +1,4 @@
-"""Tests for ExtractBench-Strict scoring module."""
+"""Tests for ResumeBench-Strict scoring module."""
 
 from resume_bench.grading.strict import (
     _record_ok,

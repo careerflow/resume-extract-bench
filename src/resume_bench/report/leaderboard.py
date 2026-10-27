@@ -129,7 +129,7 @@ def print_leaderboard(split: str = "test") -> None:
 
     ranked = sorted(summaries.items(), key=lambda x: x[1]["resume_entity_f1"], reverse=True)
 
-    table = Table(title=f"ResumeExtractBench Leaderboard ({split})")
+    table = Table(title=f"ResumeBench Leaderboard ({split})")
     table.add_column("#", justify="right", style="bold")
     table.add_column("Pipeline")
     table.add_column("Entity F1", justify="right")
@@ -258,7 +258,7 @@ def _write_html_report(
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ResumeExtractBench Leaderboard - {split}</title>
+    <title>ResumeBench Leaderboard - {split}</title>
     <style>
         body {{ font-family: system-ui, sans-serif; max-width: 1400px; margin: 2rem auto; padding: 0 1rem; }}
         h1 {{ color: #1a1a2e; }}
@@ -271,7 +271,7 @@ def _write_html_report(
     </style>
 </head>
 <body>
-    <h1>ResumeExtractBench Leaderboard</h1>
+    <h1>ResumeBench Leaderboard</h1>
     <p>Split: <strong>{split}</strong></p>
     <table>
         <thead>

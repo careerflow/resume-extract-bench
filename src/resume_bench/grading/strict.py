@@ -1,6 +1,6 @@
-"""ExtractBench-Strict scoring algorithm.
+"""ResumeBench-Strict scoring algorithm.
 
-A harder companion to ExtractBench-exact (:mod:`extractbench`).  Same inputs,
+A harder companion to ResumeBench-exact (:mod:`exact`).  Same inputs,
 same normalization, same Hungarian entity alignment, same skills handling
 (comma split + dedupe) and the same per-document averaging.  Three rules make
 it stricter:
@@ -11,7 +11,7 @@ it stricter:
    field that is non-empty on either side matches AND its bullets match
    one-for-one (same count, each bullet equal).
 2. **Empty is not free.**  Basics fields count only where the label or the
-   parser has a value.  Skills: one unit per skill, as in ExtractBench-exact.
+   parser has a value.  Skills: one unit per skill, as in ResumeBench-exact.
 3. **Section-averaged.**  Per document, F1 / precision / recall are computed per
    section (sections present in the label or the output) and averaged, so every
    section weighs the same.
@@ -33,9 +33,9 @@ from typing import Sequence
 
 __all__ = ["score_resume_strict", "verbatim_normalize"]
 
-from resume_bench.grading.extractbench import (
-    _eb_align_entities,
-    _eb_normalize,
+from resume_bench.grading.exact import (
+    _rb_align_entities,
+    _rb_normalize,
     _split_comma_skills,
     _unwrap_items,
     _unwrap_text,
@@ -43,7 +43,7 @@ from resume_bench.grading.extractbench import (
 from resume_bench.grading.metrics import SECTION_SCHEMA_FIELDS, _is_empty
 from resume_bench.schema.sections import SectionKind, SectionSpec
 
-_OFFICIAL_NORMALIZE = _eb_normalize
+_OFFICIAL_NORMALIZE = _rb_normalize
 
 _GLYPHS = str.maketrans(
     {
@@ -129,7 +129,7 @@ def score_resume_strict(
     sections: Sequence[SectionSpec],
     verbatim: bool = False,
 ) -> dict:
-    """Score a single resume with ExtractBench-Strict rules.
+    """Score a single resume with ResumeBench-Strict rules.
 
     Returns a dict with top-level ``f1``, ``precision``, ``recall`` (section-
     averaged), ``correct``, ``expected``, ``predicted`` (unit totals), and
@@ -184,7 +184,7 @@ def _score_resume_strict(
             ps = list({s.lower().strip(): s for s in _split_comma_skills(ps)}.values())
             if not gs and not ps:
                 continue
-            m, _, _ = _eb_align_entities(
+            m, _, _ = _rb_align_entities(
                 [{"name": s} for s in gs], [{"name": s} for s in ps], ["name"],
             )
             c = sum(_str_match(gs[a], ps[b]) == 1.0 for a, b in m)
@@ -209,7 +209,7 @@ def _score_resume_strict(
                 sf = SECTION_SCHEMA_FIELDS.get(name, [])
                 c, e, q = 0, len(gi), len(pi)
                 if gi and pi:
-                    m, _, _ = _eb_align_entities(gi, pi, sf)
+                    m, _, _ = _rb_align_entities(gi, pi, sf)
                     c = sum(_record_ok(gi[a], pi[b], sf) for a, b in m)
         else:
             continue

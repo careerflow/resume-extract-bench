@@ -118,7 +118,7 @@ def _entity_quality(
     """Compute extraction quality for a matched entity pair.
 
     When schema_fields is None (default): scores only fields where GT has data.
-    When schema_fields is provided: scores ALL listed fields using ExtractBench
+    When schema_fields is provided: scores ALL listed fields using ResumeBench
     rules -- null/null = 1.0, null/value = 0.0, value/null = 0.0.
     """
     scores: list[float] = []

@@ -349,7 +349,7 @@ class TestPositionalBulletScore:
 
 
 class TestEntityQualitySchemaFields:
-    """Tests for _entity_quality with schema_fields (ExtractBench mode)."""
+    """Tests for _entity_quality with schema_fields (ResumeBench mode)."""
 
     def test_both_null_scores_one(self):
         gt = {"company": "Google"}

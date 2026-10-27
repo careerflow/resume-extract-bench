@@ -58,7 +58,7 @@ class ResumeScore:
 
 @dataclass
 class CellCounts:
-    """Cell-level counts for ExtractBench-exact scoring."""
+    """Cell-level counts for ResumeBench-exact scoring."""
 
     correct: int = 0
     expected: int = 0
@@ -79,8 +79,8 @@ class CellCounts:
 
 
 @dataclass
-class ExtractBenchScore:
-    """Per-resume result from ExtractBench-exact scoring."""
+class ResumeBenchScore:
+    """Per-resume result from ResumeBench-exact scoring."""
 
     resume_id: str = ""
     cells: CellCounts = field(default_factory=CellCounts)

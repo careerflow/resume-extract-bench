@@ -16,7 +16,7 @@ from resume_bench.providers.base import (
 from resume_bench.providers.registry import register_provider
 
 # Per-million token rates: (input, output).
-# Covers all models from the internal benchmark + ExtractBench leaderboard.
+# Covers all models from the internal benchmark + ResumeBench leaderboard.
 _OPENROUTER_RATES: dict[str, tuple[float, float]] = {
     # Qwen family
     "qwen/qwen3.8-flash": (0.15, 0.47),

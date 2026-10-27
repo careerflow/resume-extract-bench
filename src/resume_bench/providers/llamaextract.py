@@ -12,7 +12,7 @@ from resume_bench.providers.base import (
 )
 from resume_bench.providers.registry import register_provider
 
-# Credit-based pricing (source: ExtractBench / LlamaIndex pricing page)
+# Credit-based pricing (source: ResumeBench / LlamaIndex pricing page)
 _USD_PER_CREDIT = 1.25 / 1000  # $0.00125 per credit
 
 _EXTRACT_CREDITS_PER_PAGE: dict[str, int] = {

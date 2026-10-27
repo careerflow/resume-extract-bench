@@ -1,11 +1,10 @@
-"""ExtractBench-exact scoring algorithm.
+"""ResumeBench-exact scoring algorithm.
 
 Cell-level binary exact-match scoring: every schema field is a "cell",
 each cell is either correct (1) or incorrect (0) after whitespace
 normalization.  Entity alignment uses the Hungarian algorithm on
 cell-mismatch cost (no similarity threshold).
 
-Ported from the internal ``run_combined_benchmark.py`` implementation.
 """
 
 from __future__ import annotations
@@ -47,7 +46,7 @@ def _unwrap_text(section_data):
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _eb_normalize(s: object) -> str:
+def _rb_normalize(s: object) -> str:
     """Whitespace-collapse + lowercase + strip non-semantic punctuation.
 
     Keeps letters, digits, underscores (\\w), whitespace, '+', '#' so that
@@ -83,16 +82,16 @@ def _split_comma_skills(skills: list[str]) -> list[str]:
     return result
 
 
-def _eb_str_match(a: object, b: object) -> float:
+def _rb_str_match(a: object, b: object) -> float:
     """Binary exact string comparison after normalization. Returns 1.0 or 0.0."""
-    return 1.0 if _eb_normalize(a) == _eb_normalize(b) else 0.0
+    return 1.0 if _rb_normalize(a) == _rb_normalize(b) else 0.0
 
 
 # ---------------------------------------------------------------------------
 # Per-entity helpers
 # ---------------------------------------------------------------------------
 
-def _eb_cell_mismatch_count(
+def _rb_cell_mismatch_count(
     gt_ent: dict,
     pred_ent: dict,
     s_fields: Sequence[str],
@@ -123,7 +122,7 @@ def _eb_cell_mismatch_count(
             if gt_v != pred_v:
                 mismatches += 1
         elif isinstance(gt_v, str):
-            if _eb_str_match(gt_v, str(pred_v or "")) == 0.0:
+            if _rb_str_match(gt_v, str(pred_v or "")) == 0.0:
                 mismatches += 1
 
     # Description bullets: each bullet is a cell
@@ -139,13 +138,13 @@ def _eb_cell_mismatch_count(
             total += 1
             gt_b = str(gt_d[i]).strip() if i < len(gt_d) else ""
             pred_b = str(pred_d[i]).strip() if i < len(pred_d) else ""
-            if _eb_str_match(gt_b, pred_b) == 0.0:
+            if _rb_str_match(gt_b, pred_b) == 0.0:
                 mismatches += 1
 
     return mismatches, total
 
 
-def _eb_align_entities(
+def _rb_align_entities(
     gt_items: list[dict],
     pred_items: list[dict],
     s_fields: Sequence[str],
@@ -165,7 +164,7 @@ def _eb_align_entities(
 
     for i, gt in enumerate(gt_items):
         for j, pred in enumerate(pred_items):
-            mismatches, _ = _eb_cell_mismatch_count(gt, pred, s_fields)
+            mismatches, _ = _rb_cell_mismatch_count(gt, pred, s_fields)
             cost_matrix[i][j] = mismatches
 
     row_ind, col_ind = linear_sum_assignment(cost_matrix)
@@ -182,7 +181,7 @@ def _eb_align_entities(
     return matched, sorted(missed_gt), sorted(spurious_pred)
 
 
-def _eb_count_entity_cells(entity: dict, s_fields: Sequence[str]) -> int:
+def _rb_count_entity_cells(entity: dict, s_fields: Sequence[str]) -> int:
     """Count total cells in an entity (scalar fields + description bullets)."""
     count = len(s_fields)
     for dk in ("description", "descriptions"):
@@ -196,13 +195,13 @@ def _eb_count_entity_cells(entity: dict, s_fields: Sequence[str]) -> int:
 # Main scoring function
 # ---------------------------------------------------------------------------
 
-def eb_score_resume(
+def rb_score_resume(
     gt: dict,
     pred: dict,
     sections: Sequence[SectionSpec],
     exclude_sections: set[str] | None = None,
 ) -> CellCounts:
-    """Score a resume using the ExtractBench-exact algorithm.
+    """Score a resume using the ResumeBench-exact algorithm.
 
     Every schema field is a "cell".  A cell is **correct** when the GT and
     predicted values are identical after whitespace normalisation.
@@ -239,7 +238,7 @@ def eb_score_resume(
                 ).strip()
                 expected += 1
                 predicted += 1
-                if _eb_str_match(gt_name, pred_name) == 1.0:
+                if _rb_str_match(gt_name, pred_name) == 1.0:
                     correct += 1
                 scored_fields = [f for f in fields if f not in ("fname", "lname")]
             else:
@@ -258,7 +257,7 @@ def eb_score_resume(
                     if bool(gt_v) == bool(pred_v):
                         correct += 1
                 else:
-                    if _eb_str_match(str(gt_v or ""), str(pred_v or "")) == 1.0:
+                    if _rb_str_match(str(gt_v or ""), str(pred_v or "")) == 1.0:
                         correct += 1
 
         # -- Flat skills -------------------------------------------------------
@@ -282,12 +281,12 @@ def eb_score_resume(
             # Align skills using exact match (Hungarian on mismatch cost)
             gt_w = [{"name": s} for s in gt_skills]
             pred_w = [{"name": s} for s in pred_skills]
-            matched, missed, spurious = _eb_align_entities(gt_w, pred_w, ["name"])
+            matched, missed, spurious = _rb_align_entities(gt_w, pred_w, ["name"])
 
             for gi, pi in matched:
                 expected += 1
                 predicted += 1
-                if _eb_str_match(gt_skills[gi], pred_skills[pi]) == 1.0:
+                if _rb_str_match(gt_skills[gi], pred_skills[pi]) == 1.0:
                     correct += 1
             expected += len(missed)    # missed GT skills
             predicted += len(spurious)  # hallucinated skills
@@ -315,7 +314,7 @@ def eb_score_resume(
                     # Both present — one cell, score it
                     expected += 1
                     predicted += 1
-                    if _eb_str_match(gt_str, pred_str) == 1.0:
+                    if _rb_str_match(gt_str, pred_str) == 1.0:
                         correct += 1
                 continue
 
@@ -329,15 +328,15 @@ def eb_score_resume(
             if not gt_items:
                 # All predictions are spurious
                 for pi in range(len(pred_items)):
-                    predicted += _eb_count_entity_cells(pred_items[pi], s_fields)
+                    predicted += _rb_count_entity_cells(pred_items[pi], s_fields)
                 continue
             if not pred_items:
                 # All GT is missed
                 for gi in range(len(gt_items)):
-                    expected += _eb_count_entity_cells(gt_items[gi], s_fields)
+                    expected += _rb_count_entity_cells(gt_items[gi], s_fields)
                 continue
 
-            matched, missed_gt, spurious_pred = _eb_align_entities(
+            matched, missed_gt, spurious_pred = _rb_align_entities(
                 gt_items, pred_items, s_fields,
             )
 
@@ -365,7 +364,7 @@ def eb_score_resume(
                         if gt_v == pred_v:
                             correct += 1
                     elif isinstance(gt_v, str):
-                        if _eb_str_match(gt_v, str(pred_v or "")) == 1.0:
+                        if _rb_str_match(gt_v, str(pred_v or "")) == 1.0:
                             correct += 1
 
                 # Description bullets: each bullet is a cell
@@ -384,15 +383,15 @@ def eb_score_resume(
                             expected += 1
                         if i < len(pred_d):
                             predicted += 1
-                        if _eb_str_match(gt_b, pred_b) == 1.0:
+                        if _rb_str_match(gt_b, pred_b) == 1.0:
                             correct += 1
 
             # Missed GT entities: cells count toward expected only
             for gi in missed_gt:
-                expected += _eb_count_entity_cells(gt_items[gi], s_fields)
+                expected += _rb_count_entity_cells(gt_items[gi], s_fields)
 
             # Spurious pred entities: cells count toward predicted only
             for pi in spurious_pred:
-                predicted += _eb_count_entity_cells(pred_items[pi], s_fields)
+                predicted += _rb_count_entity_cells(pred_items[pi], s_fields)
 
     return CellCounts(correct=correct, expected=expected, predicted=predicted)

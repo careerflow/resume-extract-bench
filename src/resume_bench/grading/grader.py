@@ -5,7 +5,7 @@ from typing import Any
 
 from resume_bench.dataset.loader import load_split
 from resume_bench.grading.metrics import SECTION_SCHEMA_FIELDS, score_entity_list, score_flat_list, score_singleton
-from resume_bench.grading.models import ExtractBenchScore, GradingConfig, ResumeScore, SectionScore
+from resume_bench.grading.models import ResumeBenchScore, GradingConfig, ResumeScore, SectionScore
 from resume_bench.schema.sections import SectionKind, get_sections
 from resume_bench.settings import settings
 
@@ -216,24 +216,24 @@ def grade_pipelines(
     return reports
 
 
-def grade_single_extractbench(
+def grade_single_exact(
     ground_truth: dict[str, Any],
     prediction: dict[str, Any],
     exclude_sections: set[str] | None = None,
-) -> ExtractBenchScore:
-    """Grade a single resume using ExtractBench-exact scoring."""
-    from resume_bench.grading.extractbench import eb_score_resume
+) -> ResumeBenchScore:
+    """Grade a single resume using ResumeBench-exact scoring."""
+    from resume_bench.grading.exact import rb_score_resume
 
-    cells = eb_score_resume(ground_truth, prediction, get_sections(), exclude_sections)
-    return ExtractBenchScore(cells=cells)
+    cells = rb_score_resume(ground_truth, prediction, get_sections(), exclude_sections)
+    return ResumeBenchScore(cells=cells)
 
 
-def grade_pipelines_extractbench(
+def grade_pipelines_exact(
     pipeline_names: list[str],
     split: str = "test",
 ) -> dict[str, dict[str, Any]]:
-    """Grade multiple pipelines using ExtractBench-exact cell-level scoring."""
-    from resume_bench.grading.extractbench import eb_score_resume
+    """Grade multiple pipelines using ResumeBench-exact cell-level scoring."""
+    from resume_bench.grading.exact import rb_score_resume
 
     cases = load_split(split)
     gt_by_id = {c.resume_id: c.ground_truth for c in cases}
@@ -244,7 +244,7 @@ def grade_pipelines_extractbench(
     for name in pipeline_names:
         predictions = _load_pipeline_results(name, split)
 
-        scores: list[ExtractBenchScore] = []
+        scores: list[ResumeBenchScore] = []
         errors = 0
 
         for resume_id, gt in gt_by_id.items():
@@ -252,11 +252,11 @@ def grade_pipelines_extractbench(
 
             if pred is None:
                 errors += 1
-                scores.append(ExtractBenchScore(resume_id=resume_id, completed=False))
+                scores.append(ResumeBenchScore(resume_id=resume_id, completed=False))
                 continue
 
-            cells = eb_score_resume(gt, pred, sections)
-            scores.append(ExtractBenchScore(resume_id=resume_id, cells=cells))
+            cells = rb_score_resume(gt, pred, sections)
+            scores.append(ResumeBenchScore(resume_id=resume_id, cells=cells))
 
         # Aggregate cell counts across all resumes
         total_correct = sum(s.cells.correct for s in scores if s.completed)
@@ -277,7 +277,7 @@ def grade_pipelines_extractbench(
         resume_f1s = [s.cells.f1 for s in scores if s.completed]
         avg_f1 = sum(resume_f1s) / len(resume_f1s) if resume_f1s else 0.0
 
-        grades_dir = settings.output_dir / name / split / "grades_extractbench"
+        grades_dir = settings.output_dir / name / split / "grades_exact"
         grades_dir.mkdir(parents=True, exist_ok=True)
 
         for s in scores:
@@ -318,7 +318,7 @@ def grade_single_strict(
     prediction: dict[str, Any],
     verbatim: bool = False,
 ) -> dict:
-    """Grade a single resume using ExtractBench-Strict scoring.
+    """Grade a single resume using ResumeBench-Strict scoring.
 
     Returns a dict with ``f1``, ``precision``, ``recall`` (section-averaged),
     ``correct``, ``expected``, ``predicted``, and ``sections``.
