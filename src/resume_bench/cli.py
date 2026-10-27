@@ -105,7 +105,7 @@ def run(
 def grade(
     pipelines: list[str] = typer.Argument(..., help="Pipeline names to grade"),
     split: str = typer.Option("test", help="Dataset split"),
-    verbatim: bool = typer.Option(False, "--verbatim", help="Verbatim mode (case/punctuation sensitive)"),
+    verbatim: bool = typer.Option(True, "--verbatim/--no-verbatim", help="Verbatim mode (case/punctuation sensitive); on by default"),
 ):
     """Grade extraction results against ground truth (ResumeBench-Strict scoring)."""
     from resume_bench.grading.grader import grade_pipelines_strict
@@ -177,7 +177,7 @@ def leaderboard(
 def grade_file(
     predictions_path: Path = typer.Argument(..., help="JSONL file with predictions"),
     split: str = typer.Option("test", help="Dataset split for ground truth"),
-    verbatim: bool = typer.Option(False, "--verbatim", help="Verbatim mode (case/punctuation sensitive)"),
+    verbatim: bool = typer.Option(True, "--verbatim/--no-verbatim", help="Verbatim mode (case/punctuation sensitive); on by default"),
 ):
     """Grade a predictions JSONL file against ground truth (ResumeBench-Strict).
 
