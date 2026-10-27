@@ -23,7 +23,6 @@ Benchmark v3 adds a fourth rule with ``verbatim=True``:
    (hyphens/dashes → "-", apostrophes → "'", double quotes → '"', soft hyphens
    dropped).
 
-Ported from the internal ``scripts/strict_scoring.py`` implementation.
 """
 
 from __future__ import annotations
@@ -31,6 +30,8 @@ from __future__ import annotations
 import re
 from contextlib import contextmanager
 from typing import Sequence
+
+__all__ = ["score_resume_strict", "verbatim_normalize"]
 
 from resume_bench.grading.extractbench import (
     _eb_align_entities,
