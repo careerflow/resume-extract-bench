@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from resume_bench.dataset.loader import load_split
-from resume_bench.grading.metrics import SECTION_SCHEMA_FIELDS, score_entity_list, score_flat_list, score_singleton
+from resume_bench.grading.metrics import SECTION_SCHEMA_FIELDS, score_entity_list, score_flat_list, score_singleton, _normalize_language_name
 from resume_bench.grading.models import ExtractBenchScore, GradingConfig, ResumeScore, SectionScore
 from resume_bench.schema.sections import SectionKind, get_sections
 from resume_bench.settings import settings
@@ -107,6 +107,16 @@ def grade_single(
             else:
                 gt_list = _unwrap_items(gt_data)
                 pred_list = _unwrap_items(pred_data)
+
+                if spec.name == "languages":
+                    gt_list = [
+                        {**item, "name": _normalize_language_name(item.get("name", ""))}
+                        for item in gt_list
+                    ]
+                    pred_list = [
+                        {**item, "name": _normalize_language_name(item.get("name", ""))}
+                        for item in pred_list
+                    ]
 
                 schema_fields = (
                     SECTION_SCHEMA_FIELDS.get(spec.name)
