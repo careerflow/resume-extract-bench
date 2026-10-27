@@ -182,7 +182,7 @@ PIPELINES: list[PipelineSpec] = [
     # Input method routing:
     #   PDF     — model provider accepts raw PDF natively (Gemini via Google)
     #   IMAGES  — model is natively multimodal; pages rasterized to PNG via
-    #             pdf2image (poppler), matching ExtractBench methodology
+    #             pdf2image (poppler), matching ResumeBench methodology
     #   TEXT    — text-only model ID; PDF parsed to markdown first
     #             parse_source="llamaparse" → LlamaParse API
     #             parse_source=None          → PyMuPDF text extraction (default)

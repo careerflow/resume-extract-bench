@@ -4,7 +4,7 @@ This module defines the structure and metadata for each resume section,
 including how to identify key fields and whether to score description arrays.
 
 Two variants are provided:
-- ``SECTIONS_FULL``: scores all schema fields (matches ExtractBench conventions).
+- ``SECTIONS_FULL``: scores all schema fields (matches ResumeBench conventions).
 - ``SECTIONS_TRIMMED``: drops fields with 0% ground-truth coverage to avoid
   false hallucination penalties (matches internal benchmark behaviour).
 

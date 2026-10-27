@@ -1,7 +1,7 @@
 [project]
 name = "resume-bench"
 version = "0.1.0"
-description = "ResumeExtractBench: a benchmark for structured resume extraction"
+description = "ResumeBench: a benchmark for structured resume extraction"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
@@ -12,7 +12,6 @@ dependencies = [
   "rich>=13",
   "numpy>=1.26",
   "scipy>=1.11",
-  "jellyfish>=1.0",
   "jsonschema>=4.21",
   "huggingface-hub>=0.23",
   "pymupdf>=1.24",

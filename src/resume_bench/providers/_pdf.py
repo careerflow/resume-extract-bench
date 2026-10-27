@@ -65,7 +65,7 @@ def pdf_to_base64_images(pdf_path: Path, dpi: int = 150) -> list[str]:
     """Rasterize each PDF page to a base64-encoded PNG string in memory.
 
     Uses ``pdf2image`` (poppler-based) for rasterization, matching the
-    approach used by ExtractBench.  Unlike ``pdf_to_images()``, this does
+    approach used by ResumeBench.  Unlike ``pdf_to_images()``, this does
     not write temp files — the PNG bytes are returned directly as base64
     strings suitable for embedding in API requests as
     ``data:image/png;base64,...`` URIs.
