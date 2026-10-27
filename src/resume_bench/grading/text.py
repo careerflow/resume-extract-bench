@@ -1,9 +1,41 @@
+import re
+
 import jellyfish
+
+_UNICODE_PUNCT = str.maketrans({
+    '‘': "'", '’': "'",   # left/right single curly quote
+    '“': '"', '”': '"',   # left/right double curly quote
+    '′': "'", '″': '"',   # prime / double prime
+    'ʼ': "'",                  # modifier letter apostrophe
+    '–': '-', '—': '-',   # en-dash / em-dash
+    '―': '-', '‒': '-',   # horizontal bar / figure dash
+    '‐': '-',                  # hyphen char (distinct from ASCII hyphen-minus)
+})
+
+
+def _normalize_unicode_punct(s: str) -> str:
+    """Replace curly quotes and en/em dashes with their ASCII equivalents."""
+    return s.translate(_UNICODE_PUNCT)
+
+
+_BULLET_PREFIX_RE = re.compile(
+    r'^[\s•●○◦▪▸►▹→⮞⁃■□✓✔✗✘★☆※‣⦁∙⚫➢➤⬥❖◆◇▶▷►‣·–—›»​‌‍﻿'
+    r'\U0001f680\U0001f4cc\U0001f4cd'
+    r'❖➔⮚]+\s*'
+)
+
+
+def _strip_bullet_prefix(s: str) -> str:
+    """Strip leading bullet-point symbols and decorators from text."""
+    if not s:
+        return s
+    return _BULLET_PREFIX_RE.sub('', s)
 
 
 def normalize_text(text: str | None) -> str:
     """Normalize text for comparison - lowercase, strip whitespace, remove corporate suffixes."""
     text = (text or "").lower().strip()
+    text = _normalize_unicode_punct(text)
 
     for suffix in [
         " llc", " inc", " inc.", " corp", " corp.", " ltd", " ltd.",
@@ -31,8 +63,8 @@ def field_similarity(a: str | None, b: str | None) -> float:
 
 def edit_distance_ratio(a: str, b: str) -> float:
     """Normalized edit distance similarity. Returns 0.0-1.0."""
-    a = (a or "").lower().strip()
-    b = (b or "").lower().strip()
+    a = _strip_bullet_prefix(_normalize_unicode_punct((a or "").lower().strip()))
+    b = _strip_bullet_prefix(_normalize_unicode_punct((b or "").lower().strip()))
     if not a and not b:
         return 1.0
     if not a or not b:

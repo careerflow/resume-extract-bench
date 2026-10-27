@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Sequence
 
 from resume_bench.grading.alignment import align_entities
@@ -10,6 +11,32 @@ from resume_bench.grading.text import edit_distance_ratio, field_similarity, tok
 # These are scored with edit_distance_ratio (order-sensitive character comparison)
 # instead of Jaro-Winkler (prefix-weighted, designed for short names/titles).
 _TEXT_BLOCK_FIELDS = {"summary", "roleDescription", "text"}
+
+_SCORE_PREFIX_RE = re.compile(
+    r'^(?:cgpa|gpa|grade|score|percentage|marks)\s*[:\-–—]?\s*',
+    re.IGNORECASE,
+)
+
+_LANG_PAREN_RE = re.compile(r'\s*\(([^)]+)\)\s*$')
+
+
+def _normalize_education_score(s: str) -> str:
+    """Strip common GPA/CGPA/Grade prefixes from education score values."""
+    if not s or not isinstance(s, str):
+        return s
+    return _SCORE_PREFIX_RE.sub('', s).strip()
+
+
+def _normalize_language_name(s: str) -> str:
+    """Strip trailing parenthetical proficiency from a language name.
+
+    GT often stores 'English (Fluent)' while extractors split into
+    name='English', level='Fluent'.  Stripping the parenthetical from the
+    name field before alignment and scoring prevents false mismatches.
+    """
+    if not s or not isinstance(s, str):
+        return s
+    return _LANG_PAREN_RE.sub('', s).strip()
 
 # All scalar fields per section type (excludes 'description' arrays which are
 # handled separately by _positional_bullet_score).
@@ -44,24 +71,6 @@ SECTION_SCHEMA_FIELDS: dict[str, list[str]] = {
 }
 
 
-def _split_comma_skills(skills: list[str]) -> list[str]:
-    """Split comma-separated skill strings into individual skills.
-
-    Some LLMs extract "Python, Java, C++" as one entry instead of
-    ["Python", "Java", "C++"]. This splits on commas and filters empties.
-    """
-    result: list[str] = []
-    for s in skills:
-        if not isinstance(s, str):
-            result.append(s)
-            continue
-        if "," in s:
-            result.extend(part.strip() for part in s.split(",") if part.strip())
-        else:
-            result.append(s)
-    return result
-
-
 def _is_empty(val) -> bool:
     """Check if a value is effectively empty/null."""
     if val is None:
@@ -73,6 +82,13 @@ def _is_empty(val) -> bool:
     if isinstance(val, dict) and all(_is_empty(v) for v in val.values()):
         return True
     return False
+
+
+def _unwrap_url(val):
+    """Extract a plain URL string from a {href, label} dict."""
+    if isinstance(val, dict):
+        return val.get("href") or val.get("label") or ""
+    return val
 
 
 def _split_comma_skills(skills: list[str]) -> list[str]:
@@ -133,6 +149,10 @@ def _entity_quality(
         gt_val = gt_entity.get(key)
         pred_val = pred_entity.get(key)
 
+        if key == "url":
+            gt_val = _unwrap_url(gt_val)
+            pred_val = _unwrap_url(pred_val)
+
         gt_empty = _is_empty(gt_val)
         pred_empty = _is_empty(pred_val)
 
@@ -174,6 +194,9 @@ def _entity_quality(
             scores.append(1.0 if gt_val == pred_val else 0.0)
         elif isinstance(gt_val, str):
             pred_str = str(pred_val or "")
+            if key == "score":
+                gt_val = _normalize_education_score(gt_val)
+                pred_str = _normalize_education_score(pred_str)
             if key in _TEXT_BLOCK_FIELDS:
                 scores.append(edit_distance_ratio(gt_val, pred_str))
             else:
