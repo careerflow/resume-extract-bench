@@ -311,3 +311,18 @@ def grade_pipelines_extractbench(
         }
 
     return reports
+
+
+def grade_single_strict(
+    ground_truth: dict[str, Any],
+    prediction: dict[str, Any],
+    verbatim: bool = False,
+) -> dict:
+    """Grade a single resume using ExtractBench-Strict scoring.
+
+    Returns a dict with ``f1``, ``precision``, ``recall`` (section-averaged),
+    ``correct``, ``expected``, ``predicted``, and ``sections``.
+    """
+    from resume_bench.grading.strict import score_resume_strict
+
+    return score_resume_strict(ground_truth, prediction, get_sections(), verbatim=verbatim)
