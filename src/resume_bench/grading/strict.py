@@ -88,21 +88,21 @@ def _is_empty(val) -> bool:
 
 
 def _unwrap_items(section_data):
-    """Extract the items list from a possibly-wrapped section."""
-    if isinstance(section_data, dict) and "items" in section_data:
-        return section_data.get("items", [])
+    """Extract the items list from a possibly-wrapped section.
+
+    - list → return as-is (already a list of entities)
+    - dict with "items" key → return items list (standard wrapper)
+    - dict without "items" → return [dict] (singleton like personalSummary)
+    - anything else → return []
+    """
     if isinstance(section_data, list):
         return section_data
+    if isinstance(section_data, dict):
+        if "items" in section_data:
+            return section_data["items"]
+        return [section_data]
     return []
 
-
-def _unwrap_text(section_data):
-    """Extract the text string from a possibly-wrapped personalSummary."""
-    if isinstance(section_data, dict) and "text" in section_data:
-        return section_data.get("text")
-    if isinstance(section_data, str):
-        return section_data
-    return None
 
 
 def _rb_normalize(s: object) -> str:
@@ -166,7 +166,7 @@ def _rb_cell_mismatch_count(
             if gt_v != pred_v:
                 mismatches += 1
         elif isinstance(gt_v, str):
-            if _rb_normalize(gt_v) != _rb_normalize(str(pred_v or "")):
+            if _active_normalize(gt_v) != _active_normalize(str(pred_v or "")):
                 mismatches += 1
 
     for dk in ("description", "descriptions"):
@@ -181,7 +181,7 @@ def _rb_cell_mismatch_count(
             total += 1
             gt_b = str(gt_d[i]).strip() if i < len(gt_d) else ""
             pred_b = str(pred_d[i]).strip() if i < len(pred_d) else ""
-            if _rb_normalize(gt_b) != _rb_normalize(pred_b):
+            if _active_normalize(gt_b) != _active_normalize(pred_b):
                 mismatches += 1
 
     return mismatches, total
@@ -375,26 +375,15 @@ def _score_resume_strict(
             e, q = len(gs), len(ps)
 
         elif spec.kind == SectionKind.ENTITY_LIST:
-            if name == "personalSummary":
-                gt_str = _unwrap_text(gt.get(name)) or ""
-                pred_str = _unwrap_text(pred.get(name)) or ""
-                gt_empty = not gt_str.strip()
-                pred_empty = not pred_str.strip()
-                if gt_empty and pred_empty:
-                    continue
-                c = int(not gt_empty and not pred_empty and _str_match(gt_str, pred_str) == 1.0)
-                e = int(not gt_empty)
-                q = int(not pred_empty)
-            else:
-                gi = _unwrap_items(gt.get(name, []))
-                pi = _unwrap_items(pred.get(name, []))
-                if not gi and not pi:
-                    continue
-                sf = SECTION_SCHEMA_FIELDS.get(name, [])
-                c, e, q = 0, len(gi), len(pi)
-                if gi and pi:
-                    m, _, _ = _rb_align_entities(gi, pi, sf)
-                    c = sum(_record_ok(gi[a], pi[b], sf) for a, b in m)
+            gi = _unwrap_items(gt.get(name, []))
+            pi = _unwrap_items(pred.get(name, []))
+            if not gi and not pi:
+                continue
+            sf = SECTION_SCHEMA_FIELDS.get(name, [])
+            c, e, q = 0, len(gi), len(pi)
+            if gi and pi:
+                m, _, _ = _rb_align_entities(gi, pi, sf)
+                c = sum(_record_ok(gi[a], pi[b], sf) for a, b in m)
         else:
             continue
 

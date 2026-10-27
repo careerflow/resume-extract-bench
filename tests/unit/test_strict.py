@@ -212,20 +212,35 @@ class TestStrictPersonalSummary:
         return (SectionSpec("personalSummary", SectionKind.ENTITY_LIST, ("text",)),)
 
     def test_perfect(self):
-        gt = {"personalSummary": "Expert engineer with 10 years experience."}
-        pred = {"personalSummary": "Expert engineer with 10 years experience."}
+        gt = {"personalSummary": {"text": "Expert engineer with 10 years experience."}}
+        pred = {"personalSummary": {"text": "Expert engineer with 10 years experience."}}
         r = score_resume_strict(gt, pred, self._sections())
         assert r["f1"] == 1.0
 
     def test_mismatch(self):
-        gt = {"personalSummary": "Expert engineer."}
-        pred = {"personalSummary": "Junior developer."}
+        gt = {"personalSummary": {"text": "Expert engineer."}}
+        pred = {"personalSummary": {"text": "Junior developer."}}
         r = score_resume_strict(gt, pred, self._sections())
         assert r["sections"]["personalSummary"]["correct"] == 0
 
-    def test_both_empty_skipped(self):
-        r = score_resume_strict({"personalSummary": ""}, {"personalSummary": ""}, self._sections())
+    def test_both_empty_bare_string_skipped(self):
+        """Bare strings go through _unwrap_items → [] (not a dict, not a list) → skip."""
+        r = score_resume_strict(
+            {"personalSummary": ""},
+            {"personalSummary": ""},
+            self._sections(),
+        )
         assert "personalSummary" not in r["sections"]
+
+    def test_both_empty_dict_still_counted(self):
+        """Dict without 'items' key is treated as singleton entity by _unwrap_items.
+        _record_ok sees both empty and returns True → correct=1."""
+        r = score_resume_strict(
+            {"personalSummary": {"sectionTitle": None, "text": ""}},
+            {"personalSummary": {"sectionTitle": None, "text": ""}},
+            self._sections(),
+        )
+        assert r["sections"]["personalSummary"]["correct"] == 1
 
 
 # ---------------------------------------------------------------------------
