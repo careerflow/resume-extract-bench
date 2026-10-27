@@ -1,9 +1,7 @@
 """ResumeBench-Strict scoring algorithm.
 
-A harder companion to ResumeBench-exact (:mod:`exact`).  Same inputs,
-same normalization, same Hungarian entity alignment, same skills handling
-(comma split + dedupe) and the same per-document averaging.  Three rules make
-it stricter:
+Record-level binary scoring for structured resume extraction.  Three rules
+make it stricter than per-cell scoring:
 
 1. **Record-level units.**  An entity (one job, school, project, certification,
    award, volunteer role, publication, language, interest, profile, custom
@@ -11,17 +9,17 @@ it stricter:
    field that is non-empty on either side matches AND its bullets match
    one-for-one (same count, each bullet equal).
 2. **Empty is not free.**  Basics fields count only where the label or the
-   parser has a value.  Skills: one unit per skill, as in ResumeBench-exact.
+   parser has a value.  Skills: one unit per skill.
 3. **Section-averaged.**  Per document, F1 / precision / recall are computed per
    section (sections present in the label or the output) and averaged, so every
    section weighs the same.
 
 Benchmark v3 adds a fourth rule with ``verbatim=True``:
 
-4. **Verbatim text.**  Strings match only after whitespace collapsing — case
+4. **Verbatim text.**  Strings match only after whitespace collapsing -- case
    and punctuation count.  Typographic variants of one character are folded
-   (hyphens/dashes → "-", apostrophes → "'", double quotes → '"', soft hyphens
-   dropped).
+   (hyphens/dashes -> "-", apostrophes -> "'", double quotes -> '"', soft
+   hyphens dropped).
 
 """
 
@@ -31,20 +29,201 @@ import re
 from contextlib import contextmanager
 from typing import Sequence
 
-__all__ = ["score_resume_strict", "verbatim_normalize"]
+import numpy as np
+from scipy.optimize import linear_sum_assignment
 
-from resume_bench.grading.exact import (
-    SECTION_SCHEMA_FIELDS,
-    _is_empty,
-    _rb_align_entities,
-    _rb_normalize,
-    _split_comma_skills,
-    _unwrap_items,
-    _unwrap_text,
-)
 from resume_bench.schema.sections import SectionKind, SectionSpec
 
-_OFFICIAL_NORMALIZE = _rb_normalize
+__all__ = ["score_resume_strict", "verbatim_normalize", "SECTION_SCHEMA_FIELDS"]
+
+# ---------------------------------------------------------------------------
+# Schema field definitions
+# ---------------------------------------------------------------------------
+
+SECTION_SCHEMA_FIELDS: dict[str, list[str]] = {
+    "experience": [
+        "company", "position", "startMonth", "startYear",
+        "endMonth", "endYear", "currentlyWorkHere", "city", "state",
+        "country", "isRemote", "roleDescription", "companyUrl",
+    ],
+    "education": [
+        "institution", "area", "studyType", "score",
+        "startMonth", "startYear", "endMonth", "endYear",
+        "currentlyStudyHere", "city", "state", "country",
+    ],
+    "projects": [
+        "name", "startYear", "endYear", "url", "companyName",
+        "city", "state", "country", "startMonth", "endMonth", "inProgress",
+    ],
+    "certifications": ["name", "issuer", "date", "url"],
+    "awards": ["title", "awarder", "date", "summary", "url"],
+    "volunteering": [
+        "organization", "position", "startYear", "endYear",
+        "currentlyVolunteerHere", "startMonth", "endMonth",
+        "city", "state", "country", "summary",
+    ],
+    "publications": ["name", "publisher", "date", "summary"],
+    "languages": ["name", "level"],
+    "interests": ["name"],
+    "profiles": ["network", "url"],
+    "customSections": ["sectionTitle", "summary"],
+    "personalSummary": ["text"],
+}
+
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+
+def _is_empty(val) -> bool:
+    if val is None:
+        return True
+    if isinstance(val, str) and not val.strip():
+        return True
+    if isinstance(val, list) and not val:
+        return True
+    if isinstance(val, dict) and all(_is_empty(v) for v in val.values()):
+        return True
+    return False
+
+
+def _unwrap_items(section_data):
+    """Extract the items list from a possibly-wrapped section."""
+    if isinstance(section_data, dict) and "items" in section_data:
+        return section_data.get("items", [])
+    if isinstance(section_data, list):
+        return section_data
+    return []
+
+
+def _unwrap_text(section_data):
+    """Extract the text string from a possibly-wrapped personalSummary."""
+    if isinstance(section_data, dict) and "text" in section_data:
+        return section_data.get("text")
+    if isinstance(section_data, str):
+        return section_data
+    return None
+
+
+def _rb_normalize(s: object) -> str:
+    """Whitespace-collapse + lowercase + strip non-semantic punctuation.
+
+    Keeps letters, digits, underscores (\\w), whitespace, '+', '#' so that
+    C++, C#, F# survive.
+    """
+    if s is None:
+        return ""
+    s = str(s).strip()
+    s = re.sub(r"\s+", " ", s)
+    s = s.lower()
+    s = re.sub(r"[^\w\s+#]", "", s)
+    s = re.sub(r" +", " ", s).strip()
+    return s
+
+
+def _split_comma_skills(skills: list[str]) -> list[str]:
+    """Split comma-separated skill strings into individual skills."""
+    result: list[str] = []
+    for s in skills:
+        if not isinstance(s, str):
+            result.append(s)
+            continue
+        if "," in s:
+            result.extend(part.strip() for part in s.split(",") if part.strip())
+        else:
+            result.append(s)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Hungarian entity alignment (cell-mismatch cost, no threshold)
+# ---------------------------------------------------------------------------
+
+def _rb_cell_mismatch_count(
+    gt_ent: dict,
+    pred_ent: dict,
+    s_fields: Sequence[str],
+) -> tuple[int, int]:
+    """Count mismatched cells between two entities (for Hungarian cost matrix)."""
+    mismatches = 0
+    total = 0
+
+    for field in s_fields:
+        gt_v = gt_ent.get(field)
+        pred_v = pred_ent.get(field)
+        gt_e = _is_empty(gt_v)
+        pred_e = _is_empty(pred_v)
+        total += 1
+
+        if gt_e and pred_e:
+            continue
+        elif gt_e or pred_e:
+            mismatches += 1
+        elif isinstance(gt_v, bool):
+            if gt_v != bool(pred_v):
+                mismatches += 1
+        elif isinstance(gt_v, (int, float)):
+            if gt_v != pred_v:
+                mismatches += 1
+        elif isinstance(gt_v, str):
+            if _rb_normalize(gt_v) != _rb_normalize(str(pred_v or "")):
+                mismatches += 1
+
+    for dk in ("description", "descriptions"):
+        gt_d = gt_ent.get(dk, []) or []
+        pred_d = pred_ent.get(dk, []) or []
+        if not isinstance(gt_d, list):
+            gt_d = []
+        if not isinstance(pred_d, list):
+            pred_d = []
+        n = max(len(gt_d), len(pred_d))
+        for i in range(n):
+            total += 1
+            gt_b = str(gt_d[i]).strip() if i < len(gt_d) else ""
+            pred_b = str(pred_d[i]).strip() if i < len(pred_d) else ""
+            if _rb_normalize(gt_b) != _rb_normalize(pred_b):
+                mismatches += 1
+
+    return mismatches, total
+
+
+def _rb_align_entities(
+    gt_items: list[dict],
+    pred_items: list[dict],
+    s_fields: Sequence[str],
+) -> tuple[list[tuple[int, int]], list[int], list[int]]:
+    """Align entities using Hungarian algorithm on cell-mismatch cost.
+
+    Returns ``(matched_pairs, missed_gt_indices, spurious_pred_indices)``.
+    """
+    if not gt_items or not pred_items:
+        return [], list(range(len(gt_items))), list(range(len(pred_items)))
+
+    n, m = len(gt_items), len(pred_items)
+    cost_matrix = np.zeros((n, m))
+
+    for i, gt in enumerate(gt_items):
+        for j, pred in enumerate(pred_items):
+            mismatches, _ = _rb_cell_mismatch_count(gt, pred, s_fields)
+            cost_matrix[i][j] = mismatches
+
+    row_ind, col_ind = linear_sum_assignment(cost_matrix)
+
+    matched: list[tuple[int, int]] = []
+    missed_gt = set(range(n))
+    spurious_pred = set(range(m))
+
+    for r, c in zip(row_ind, col_ind):
+        matched.append((r, c))
+        missed_gt.discard(r)
+        spurious_pred.discard(c)
+
+    return matched, sorted(missed_gt), sorted(spurious_pred)
+
+
+# ---------------------------------------------------------------------------
+# Verbatim normalization + text-rule context manager
+# ---------------------------------------------------------------------------
 
 _GLYPHS = str.maketrans(
     {
@@ -55,9 +234,7 @@ _GLYPHS = str.maketrans(
     }
 )
 
-# Module-level reference to the active normalize function.
-# _text_rule swaps it for the duration of a scoring call.
-_active_normalize = _OFFICIAL_NORMALIZE
+_active_normalize = _rb_normalize
 
 
 def verbatim_normalize(s: object) -> str:
@@ -71,18 +248,20 @@ def verbatim_normalize(s: object) -> str:
 def _text_rule(verbatim: bool):
     """Swap the string normalization for the duration of a scoring call."""
     global _active_normalize
-    _active_normalize = verbatim_normalize if verbatim else _OFFICIAL_NORMALIZE
+    _active_normalize = verbatim_normalize if verbatim else _rb_normalize
     try:
         yield
     finally:
-        _active_normalize = _OFFICIAL_NORMALIZE
+        _active_normalize = _rb_normalize
 
+
+# ---------------------------------------------------------------------------
+# Strict-specific helpers
+# ---------------------------------------------------------------------------
 
 def _str_match(a: object, b: object) -> float:
     """Binary exact string comparison after the active normalization."""
-    na = _active_normalize(a)
-    nb = _active_normalize(b)
-    return 1.0 if na == nb else 0.0
+    return 1.0 if _active_normalize(a) == _active_normalize(b) else 0.0
 
 
 def _prf(c: int, e: int, p: int) -> tuple[float, float, float]:
@@ -124,6 +303,10 @@ def _record_ok(g: dict, p: dict, fields: list[str]) -> bool:
     return len(gb) == len(pb) and all(_str_match(a, b) == 1.0 for a, b in zip(gb, pb))
 
 
+# ---------------------------------------------------------------------------
+# Main scoring function
+# ---------------------------------------------------------------------------
+
 def score_resume_strict(
     gt: dict,
     pred: dict,
@@ -134,7 +317,7 @@ def score_resume_strict(
 
     Returns a dict with top-level ``f1``, ``precision``, ``recall`` (section-
     averaged), ``correct``, ``expected``, ``predicted`` (unit totals), and
-    ``sections`` mapping section name → per-section stats.
+    ``sections`` mapping section name -> per-section stats.
     """
     with _text_rule(verbatim):
         return _score_resume_strict(gt, pred, sections)

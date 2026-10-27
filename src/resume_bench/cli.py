@@ -105,25 +105,27 @@ def run(
 def grade(
     pipelines: list[str] = typer.Argument(..., help="Pipeline names to grade"),
     split: str = typer.Option("test", help="Dataset split"),
+    verbatim: bool = typer.Option(False, "--verbatim", help="Verbatim mode (case/punctuation sensitive)"),
 ):
-    """Grade extraction results against ground truth (ResumeBench-exact scoring)."""
-    from resume_bench.grading.grader import grade_pipelines_exact
+    """Grade extraction results against ground truth (ResumeBench-Strict scoring)."""
+    from resume_bench.grading.grader import grade_pipelines_strict
 
-    console.print(f"Grading {len(pipelines)} pipeline(s)...")
+    mode = "verbatim" if verbatim else "standard"
+    console.print(f"Grading {len(pipelines)} pipeline(s) [mode={mode}]...")
 
-    reports = grade_pipelines_exact(
+    reports = grade_pipelines_strict(
         pipeline_names=pipelines,
         split=split,
+        verbatim=verbatim,
     )
 
     for name, report in reports.items():
         console.print(f"\n[bold]{name}[/bold]")
-        console.print(f"  Micro F1:  {report['micro_f1']:.4f}")
         console.print(f"  Macro F1:  {report['macro_f1']:.4f}")
         console.print(
-            f"  Cells:     {report['total_cells']['correct']}"
-            f" / {report['total_cells']['expected']} expected"
-            f" / {report['total_cells']['predicted']} predicted"
+            f"  Units:     {report['total_units']['correct']}"
+            f" / {report['total_units']['expected']} expected"
+            f" / {report['total_units']['predicted']} predicted"
         )
         console.print(f"  Completed: {report['completed']} / {report['total_resumes']}")
 
@@ -132,60 +134,41 @@ def grade(
 def leaderboard(
     split: str = typer.Option("test", help="Dataset split"),
 ):
-    """Show the ResumeBench-exact leaderboard."""
-    _show_exact_leaderboard(split)
-
-
-def _show_exact_leaderboard(split: str) -> None:
-    """Print a ResumeBench-exact leaderboard from saved grade files."""
-    from resume_bench.grading.models import CellCounts
-
+    """Show the ResumeBench-Strict leaderboard."""
     output_dir = settings.output_dir
-    rows: list[tuple[str, CellCounts, int]] = []
+    rows: list[tuple[str, float, int]] = []
 
     for pipeline_dir in sorted(output_dir.iterdir()):
-        grades_dir = pipeline_dir / split / "grades_exact"
+        grades_dir = pipeline_dir / split / "grades_strict"
         if not grades_dir.exists():
             continue
 
-        agg = CellCounts()
-        count = 0
+        f1s: list[float] = []
         for grade_path in grades_dir.glob("*.grade.json"):
             with open(grade_path) as f:
                 data = json.load(f)
             if not data.get("completed", True):
                 continue
-            agg.correct += data["correct"]
-            agg.expected += data["expected"]
-            agg.predicted += data["predicted"]
-            count += 1
+            f1s.append(data.get("f1", 0.0))
 
-        if count:
-            rows.append((pipeline_dir.name, agg, count))
+        if f1s:
+            macro_f1 = sum(f1s) / len(f1s)
+            rows.append((pipeline_dir.name, macro_f1, len(f1s)))
 
     if not rows:
-        console.print("[yellow]No ResumeBench grades found. Run 'grade' first.[/yellow]")
+        console.print("[yellow]No ResumeBench-Strict grades found. Run 'grade' first.[/yellow]")
         return
 
-    rows.sort(key=lambda r: r[1].f1, reverse=True)
+    rows.sort(key=lambda r: r[1], reverse=True)
 
-    table = Table(title=f"ResumeBench-Exact Leaderboard ({split})")
+    table = Table(title=f"ResumeBench-Strict Leaderboard ({split})")
     table.add_column("Rank", justify="right")
     table.add_column("Pipeline")
-    table.add_column("Micro F1", justify="right")
-    table.add_column("Precision", justify="right")
-    table.add_column("Recall", justify="right")
+    table.add_column("Macro F1", justify="right")
     table.add_column("Resumes", justify="right")
 
-    for i, (name, agg, count) in enumerate(rows, 1):
-        table.add_row(
-            str(i),
-            name,
-            f"{agg.f1:.4f}",
-            f"{agg.precision:.4f}",
-            f"{agg.recall:.4f}",
-            str(count),
-        )
+    for i, (name, f1, count) in enumerate(rows, 1):
+        table.add_row(str(i), name, f"{f1:.4f}", str(count))
 
     console.print(table)
 
@@ -194,14 +177,14 @@ def _show_exact_leaderboard(split: str) -> None:
 def grade_file(
     predictions_path: Path = typer.Argument(..., help="JSONL file with predictions"),
     split: str = typer.Option("test", help="Dataset split for ground truth"),
+    verbatim: bool = typer.Option(False, "--verbatim", help="Verbatim mode (case/punctuation sensitive)"),
 ):
-    """Grade a predictions JSONL file against ground truth (ResumeBench-exact).
+    """Grade a predictions JSONL file against ground truth (ResumeBench-Strict).
 
     Each line should be: {"resume_id": "...", "prediction": {...}}
     """
     from resume_bench.dataset.loader import load_split
-    from resume_bench.grading.grader import grade_single_exact
-    from resume_bench.grading.models import CellCounts
+    from resume_bench.grading.grader import grade_single_strict
 
     cases = load_split(split)
     gt_by_id = {c.resume_id: c.ground_truth for c in cases}
@@ -221,41 +204,38 @@ def grade_file(
                 pred = {k: v for k, v in record.items() if k != "resume_id"}
             predictions[rid] = pred
 
-    rb_scores = []
+    results: list[dict] = []
 
     for rid, gt in gt_by_id.items():
         pred = predictions.get(rid)
         if pred is None:
             console.print(f"  [yellow]Missing prediction for {rid}[/yellow]")
             continue
-        score = grade_single_exact(gt, pred)
-        score.resume_id = rid
-        rb_scores.append(score)
+        result = grade_single_strict(gt, pred, verbatim=verbatim)
+        result["resume_id"] = rid
+        results.append(result)
 
-    if not rb_scores:
+    if not results:
         console.print("[red]No predictions matched any ground truth resume IDs.[/red]")
         return
 
-    agg = CellCounts(
-        correct=sum(s.cells.correct for s in rb_scores),
-        expected=sum(s.cells.expected for s in rb_scores),
-        predicted=sum(s.cells.predicted for s in rb_scores),
-    )
-    resume_f1s = [s.cells.f1 for s in rb_scores]
+    resume_f1s = [r["f1"] for r in results]
     macro_f1 = sum(resume_f1s) / len(resume_f1s)
 
-    table = Table(title=f"ResumeBench-Exact Results ({len(rb_scores)} resumes)")
+    total_correct = sum(r["correct"] for r in results)
+    total_expected = sum(r["expected"] for r in results)
+    total_predicted = sum(r["predicted"] for r in results)
+
+    mode = "verbatim" if verbatim else "standard"
+    table = Table(title=f"ResumeBench-Strict Results ({len(results)} resumes, {mode})")
     table.add_column("Metric", style="bold")
     table.add_column("Value", justify="right")
 
-    table.add_row("Micro F1", f"{agg.f1:.4f}")
     table.add_row("Macro F1", f"{macro_f1:.4f}")
-    table.add_row("Micro Precision", f"{agg.precision:.4f}")
-    table.add_row("Micro Recall", f"{agg.recall:.4f}")
-    table.add_row("Cells Correct", str(agg.correct))
-    table.add_row("Cells Expected", str(agg.expected))
-    table.add_row("Cells Predicted", str(agg.predicted))
-    table.add_row("Resumes Graded", f"{len(rb_scores)} / {len(gt_by_id)}")
+    table.add_row("Units Correct", str(total_correct))
+    table.add_row("Units Expected", str(total_expected))
+    table.add_row("Units Predicted", str(total_predicted))
+    table.add_row("Resumes Graded", f"{len(results)} / {len(gt_by_id)}")
 
     console.print(table)
 
@@ -267,7 +247,7 @@ def report(
 ):
     """Generate leaderboard report from graded results."""
     console.print("[yellow]Report generation uses 'leaderboard' command.[/yellow]")
-    _show_exact_leaderboard(split)
+    leaderboard(split=split)
 
 
 @app.command()
