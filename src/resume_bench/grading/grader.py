@@ -35,7 +35,8 @@ def _load_pipeline_results(pipeline_name: str, split: str) -> dict[str, dict]:
 def grade_single_strict(
     ground_truth: dict[str, Any],
     prediction: dict[str, Any],
-    verbatim: bool = False,
+    gate: float = 1.0,
+    verbatim: bool = True,
 ) -> dict:
     """Grade a single resume using ResumeBench-Strict scoring.
 
@@ -44,13 +45,17 @@ def grade_single_strict(
     """
     from resume_bench.grading.strict import score_resume_strict
 
-    return score_resume_strict(ground_truth, prediction, get_sections(), verbatim=verbatim)
+    return score_resume_strict(
+        ground_truth, prediction, get_sections(),
+        gate=gate, verbatim=verbatim,
+    )
 
 
 def grade_pipelines_strict(
     pipeline_names: list[str],
     split: str = "test",
-    verbatim: bool = False,
+    gate: float = 1.0,
+    verbatim: bool = True,
 ) -> dict[str, dict[str, Any]]:
     """Grade multiple pipelines using ResumeBench-Strict scoring."""
     from resume_bench.grading.strict import score_resume_strict
@@ -75,7 +80,9 @@ def grade_pipelines_strict(
                 scores.append({"resume_id": resume_id, "completed": False, "f1": 0.0})
                 continue
 
-            result = score_resume_strict(gt, pred, sections, verbatim=verbatim)
+            result = score_resume_strict(
+                gt, pred, sections, gate=gate, verbatim=verbatim,
+            )
             result["resume_id"] = resume_id
             result["completed"] = True
             scores.append(result)
@@ -90,7 +97,7 @@ def grade_pipelines_strict(
         total_expected = sum(s.get("expected", 0) for s in completed)
         total_predicted = sum(s.get("predicted", 0) for s in completed)
 
-        grades_dir = settings.output_dir / name / split / "grades_strict"
+        grades_dir = settings.output_dir / name / split / "grades"
         grades_dir.mkdir(parents=True, exist_ok=True)
 
         for s in scores:

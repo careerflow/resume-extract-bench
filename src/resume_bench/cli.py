@@ -1,3 +1,5 @@
+"""ResumeBench CLI."""
+
 from __future__ import annotations
 
 import json
@@ -106,16 +108,17 @@ def grade(
     pipelines: list[str] = typer.Argument(..., help="Pipeline names to grade"),
     split: str = typer.Option("test", help="Dataset split"),
     verbatim: bool = typer.Option(True, "--verbatim/--no-verbatim", help="Verbatim mode (case/punctuation sensitive); on by default"),
+    gate: float = typer.Option(1.0, "--gate", help="Identity gate threshold"),
 ):
-    """Grade extraction results against ground truth (ResumeBench-Strict scoring)."""
+    """Grade extraction results against ground truth."""
     from resume_bench.grading.grader import grade_pipelines_strict
 
-    mode = "verbatim" if verbatim else "standard"
-    console.print(f"Grading {len(pipelines)} pipeline(s) [mode={mode}]...")
+    console.print(f"Grading {len(pipelines)} pipeline(s) [gate={gate}, verbatim={verbatim}]...")
 
     reports = grade_pipelines_strict(
         pipeline_names=pipelines,
         split=split,
+        gate=gate,
         verbatim=verbatim,
     )
 
@@ -139,7 +142,7 @@ def leaderboard(
     rows: list[tuple[str, float, int]] = []
 
     for pipeline_dir in sorted(output_dir.iterdir()):
-        grades_dir = pipeline_dir / split / "grades_strict"
+        grades_dir = pipeline_dir / split / "grades"
         if not grades_dir.exists():
             continue
 
@@ -156,7 +159,7 @@ def leaderboard(
             rows.append((pipeline_dir.name, macro_f1, len(f1s)))
 
     if not rows:
-        console.print("[yellow]No ResumeBench-Strict grades found. Run 'grade' first.[/yellow]")
+        console.print("[yellow]No grades found. Run 'grade' first.[/yellow]")
         return
 
     rows.sort(key=lambda r: r[1], reverse=True)
@@ -178,8 +181,9 @@ def grade_file(
     predictions_path: Path = typer.Argument(..., help="JSONL file with predictions"),
     split: str = typer.Option("test", help="Dataset split for ground truth"),
     verbatim: bool = typer.Option(True, "--verbatim/--no-verbatim", help="Verbatim mode (case/punctuation sensitive); on by default"),
+    gate: float = typer.Option(1.0, "--gate", help="Identity gate threshold"),
 ):
-    """Grade a predictions JSONL file against ground truth (ResumeBench-Strict).
+    """Grade a predictions JSONL file against ground truth.
 
     Each line should be: {"resume_id": "...", "prediction": {...}}
     """
@@ -211,7 +215,7 @@ def grade_file(
         if pred is None:
             console.print(f"  [yellow]Missing prediction for {rid}[/yellow]")
             continue
-        result = grade_single_strict(gt, pred, verbatim=verbatim)
+        result = grade_single_strict(gt, pred, gate=gate, verbatim=verbatim)
         result["resume_id"] = rid
         results.append(result)
 
@@ -226,8 +230,7 @@ def grade_file(
     total_expected = sum(r["expected"] for r in results)
     total_predicted = sum(r["predicted"] for r in results)
 
-    mode = "verbatim" if verbatim else "standard"
-    table = Table(title=f"ResumeBench-Strict Results ({len(results)} resumes, {mode})")
+    table = Table(title=f"ResumeBench-Strict Results ({len(results)} resumes)")
     table.add_column("Metric", style="bold")
     table.add_column("Value", justify="right")
 
