@@ -528,3 +528,83 @@ class TestGradeSingleStrict:
         r_verbatim = grade_single_strict(gt, pred, verbatim=True)
         assert r_default["f1"] == 1.0
         assert r_verbatim["f1"] < 1.0
+
+
+# ---------------------------------------------------------------------------
+# Unicode NFC normalization
+# ---------------------------------------------------------------------------
+
+
+class TestUnicodeNFC:
+
+    def test_nfc_nfd_match_verbatim(self):
+        """NFC and NFD representations of the same accented char must match."""
+        import unicodedata
+
+        nfc = unicodedata.normalize("NFC", "resumé")  # composed e-acute
+        nfd = unicodedata.normalize("NFD", "resumé")  # e + combining acute
+        assert verbatim_normalize(nfc) == verbatim_normalize(nfd)
+
+    def test_nfc_nfd_match_standard(self):
+        from resume_bench.grading.strict import _rb_normalize
+
+        import unicodedata
+
+        nfc = unicodedata.normalize("NFC", "José")
+        nfd = unicodedata.normalize("NFD", "José")
+        assert _rb_normalize(nfc) == _rb_normalize(nfd)
+
+
+# ---------------------------------------------------------------------------
+# Ligature folding
+# ---------------------------------------------------------------------------
+
+
+class TestLigatureFolding:
+
+    def test_fi_ligature_verbatim(self):
+        assert verbatim_normalize("ﬁnance") == verbatim_normalize("finance")
+
+    def test_fl_ligature_verbatim(self):
+        assert verbatim_normalize("ﬂow") == verbatim_normalize("flow")
+
+    def test_ffi_ligature_verbatim(self):
+        assert verbatim_normalize("oﬃce") == verbatim_normalize("office")
+
+    def test_fi_ligature_standard(self):
+        from resume_bench.grading.strict import _rb_normalize
+
+        assert _rb_normalize("ﬁnance") == _rb_normalize("finance")
+
+
+# ---------------------------------------------------------------------------
+# URL dict comparison
+# ---------------------------------------------------------------------------
+
+
+class TestURLDictComparison:
+
+    def test_dict_key_order_independent(self):
+        """URL dicts with same content but different key order must match."""
+        g = {"href": "https://example.com", "label": "Example"}
+        p = {"label": "Example", "href": "https://example.com"}
+        with _text_rule(True):
+            assert _field_passes("url", g, p) is True
+
+    def test_dict_value_mismatch(self):
+        g = {"href": "https://a.com", "label": "A"}
+        p = {"href": "https://b.com", "label": "A"}
+        with _text_rule(True):
+            assert _field_passes("url", g, p) is False
+
+    def test_dict_vs_none(self):
+        """Dict compared to non-dict falls through to string comparison."""
+        g = {"href": "https://x.com"}
+        with _text_rule(True):
+            assert _field_passes("url", g, None) is False
+
+    def test_dict_extra_key(self):
+        g = {"href": "https://x.com", "label": "X"}
+        p = {"href": "https://x.com"}
+        with _text_rule(True):
+            assert _field_passes("url", g, p) is False

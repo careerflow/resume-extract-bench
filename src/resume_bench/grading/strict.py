@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import re
 import threading
+import unicodedata
 from contextlib import contextmanager
 from typing import Sequence
 
@@ -153,7 +154,8 @@ def _rb_normalize(s: object) -> str:
     """
     if s is None:
         return ""
-    s = str(s).strip()
+    s = unicodedata.normalize("NFC", str(s)).strip()
+    s = s.translate(_LIGATURES)
     s = re.sub(r"\s+", " ", s)
     s = s.lower()
     s = re.sub(r"[^\w\s+#]", "", s)
@@ -277,6 +279,10 @@ _GLYPHS = str.maketrans(
     }
 )
 
+_LIGATURES = str.maketrans(
+    {"\ufb01": "fi", "\ufb02": "fl", "\ufb03": "ffi", "\ufb04": "ffl", "\ufb05": "st", "\ufb06": "st"}
+)
+
 _tls = threading.local()
 
 
@@ -289,7 +295,8 @@ def verbatim_normalize(s: object) -> str:
     """Whitespace collapsing + typographic variant folding; case and punctuation are kept."""
     if s is None:
         return ""
-    return re.sub(r"\s+", " ", str(s).translate(_GLYPHS)).strip()
+    t = unicodedata.normalize("NFC", str(s))
+    return re.sub(r"\s+", " ", t.translate(_GLYPHS).translate(_LIGATURES)).strip()
 
 
 @contextmanager
@@ -337,6 +344,9 @@ def _field_passes(fname: str, gv: object, pv: object) -> bool:
         return bool(gv) == bool(pv)
     if isinstance(gv, (int, float)) and not isinstance(gv, bool):
         return gv == pv
+    if isinstance(gv, dict) and isinstance(pv, dict):
+        keys = set(gv) | set(pv)
+        return all(_field_passes(fname, gv.get(k), pv.get(k)) for k in keys)
     gs = str(gv if gv is not None else "")
     ps = str(pv if pv is not None else "")
     if fname in CONTACT_FIELDS or fname in LOCATION_FIELDS:
