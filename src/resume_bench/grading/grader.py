@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from resume_bench.dataset.loader import load_split
-from resume_bench.schema.sections import get_sections
+from resume_bench.schema.sections import SECTIONS
 from resume_bench.settings import settings
 
 
@@ -46,7 +46,7 @@ def grade_single_strict(
     from resume_bench.grading.strict import score_resume_strict
 
     return score_resume_strict(
-        ground_truth, prediction, get_sections(),
+        ground_truth, prediction, SECTIONS,
         gate=gate, verbatim=verbatim,
     )
 
@@ -62,7 +62,7 @@ def grade_pipelines_strict(
 
     cases = load_split(split)
     gt_by_id = {c.resume_id: c.ground_truth for c in cases}
-    sections = get_sections()
+    sections = SECTIONS
 
     reports = {}
 

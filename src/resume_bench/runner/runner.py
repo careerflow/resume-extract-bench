@@ -16,7 +16,6 @@ from resume_bench.providers.base import (
     ProviderError,
     RunRecord,
 )
-from resume_bench.providers.base import Provider as _ProviderType
 from resume_bench.providers.pipelines import PIPELINES
 from resume_bench.providers.registry import create_provider
 from resume_bench.prompts.extraction_v1 import EXTRACTION_SYSTEM_PROMPT
