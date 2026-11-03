@@ -90,8 +90,6 @@ The sole scoring method is **ResumeBench-Strict** — a per-field scoring algori
 
 - **Failed extractions score 0** in the headline F1 (not skipped). A provider that crashes on 50% of resumes gets penalized.
 - **Empty-vs-empty sections are vacuous** and excluded from the headline average.
-- **`--gate`** controls how strictly identity fields must match (default 1.0 = exact match on all identity fields).
-
 ## Schema
 
 The benchmark uses a 14-section resume schema. Each array section is wrapped as `{sectionTitle, items}` and `personalSummary` as `{sectionTitle, text}`.
