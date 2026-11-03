@@ -15,4 +15,4 @@ class TestCase:
     layout_tags: list[str] = field(default_factory=list)
     source: str = ""
     domain: str = ""
-    schema_version: str = "resume_v1"
+    schema_version: str = "resume"

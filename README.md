@@ -116,7 +116,7 @@ The benchmark uses a 14-section resume schema. Each array section is wrapped as 
 | profiles | Entity list | Yes |
 | customSections | Entity list | Yes |
 
-See `src/resume_bench/schema/resume_v1.json` for the full JSON Schema.
+See `src/resume_bench/schema/resume.json` for the full JSON Schema.
 
 ## Adding a Custom Provider
 
