@@ -35,7 +35,10 @@ class GoogleProvider(Provider):
 
         from resume_bench.settings import settings
 
-        client = genai.Client(api_key=settings.google_api_key)
+        try:
+            client = genai.Client(api_key=settings.google_api_key)
+        except Exception as e:
+            raise ProviderConfigError(f"Google client init failed: {e}")
         model = self.spec.config.get("model", "gemini-2.5-pro")
 
         prompt = (
@@ -55,7 +58,10 @@ class GoogleProvider(Provider):
 
         from resume_bench.settings import settings
 
-        client = genai.Client(api_key=settings.google_api_key)
+        try:
+            client = genai.Client(api_key=settings.google_api_key)
+        except Exception as e:
+            raise ProviderConfigError(f"Google client init failed: {e}")
         model = self.spec.config.get("model", "gemini-2.5-pro")
 
         prompt = (
