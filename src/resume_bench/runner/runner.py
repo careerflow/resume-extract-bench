@@ -18,7 +18,7 @@ from resume_bench.providers.base import (
 )
 from resume_bench.providers.pipelines import PIPELINES
 from resume_bench.providers.registry import create_provider
-from resume_bench.prompts.extraction_v1 import EXTRACTION_SYSTEM_PROMPT
+from resume_bench.prompts.extraction import EXTRACTION_SYSTEM_PROMPT
 from resume_bench.schema import get_schema
 from resume_bench.settings import settings
 

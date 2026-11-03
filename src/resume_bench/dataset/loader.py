@@ -63,7 +63,7 @@ def load_split(split: str, data_dir: Path | None = None) -> list[TestCase]:
                 layout_tags=record.get("layout_tags", []),
                 source=record.get("source", ""),
                 domain=record.get("domain", ""),
-                schema_version=record.get("schema_version", "resume_v1"),
+                schema_version=record.get("schema_version", "resume"),
             ))
 
     return cases

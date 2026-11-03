@@ -1,7 +1,7 @@
 """Resume extraction schema module.
 
 This module provides access to the JSON Schema definition for resume extraction.
-The schema is loaded from resume_v1.json and exposed through the RESUME_SCHEMA
+The schema is loaded from resume.json and exposed through the RESUME_SCHEMA
 constant and get_schema() function.
 """
 
@@ -16,7 +16,7 @@ def _load_schema() -> dict[str, Any]:
     Returns:
         dict: The parsed JSON schema definition.
     """
-    schema_path = files(__package__) / "resume_v1.json"
+    schema_path = files(__package__) / "resume.json"
     schema_text = schema_path.read_text(encoding="utf-8")
 
     return json.loads(schema_text)
