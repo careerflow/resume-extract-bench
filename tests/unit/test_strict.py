@@ -334,6 +334,27 @@ class TestStrictKeywordSections:
         r = score_resume_strict(gt, pred, sections)
         assert r["sections"]["languages"]["correct"] == 2
 
+    def test_total_mismatch_rejected(self):
+        """Completely mismatched entities should not be paired by Hungarian."""
+        gt = {"languages": [{"name": "French"}]}
+        pred = {"languages": [{"name": "Mandarin"}]}
+        sections = (SectionSpec("languages", SectionKind.ENTITY_LIST, ("name",)),)
+        r = score_resume_strict(gt, pred, sections)
+        sec = r["sections"]["languages"]
+        assert sec["correct"] == 0
+        assert sec["expected"] == 1
+        assert sec["predicted"] == 1
+
+    def test_partial_match_still_paired(self):
+        """Entities with at least one matching field should still be paired."""
+        gt = {"publications": [{"name": "Paper A", "date": "2023"}]}
+        pred = {"publications": [{"name": "Paper A", "date": "2024"}]}
+        sections = (SectionSpec("publications", SectionKind.ENTITY_LIST, ("name",)),)
+        r = score_resume_strict(gt, pred, sections)
+        sec = r["sections"]["publications"]
+        assert sec["correct"] == 1
+        assert sec["expected"] == 2
+
 
 # ---------------------------------------------------------------------------
 # score_resume_strict — personalSummary
@@ -414,6 +435,46 @@ class TestStrictVerbatim:
         r_verbatim = score_resume_strict(gt, pred, self._sections(), verbatim=True)
         assert r_nonverbatim["f1"] == 1.0
         assert r_verbatim["f1"] < 1.0
+
+
+# ---------------------------------------------------------------------------
+# Thread-safety: concurrent scoring calls with different verbatim settings
+# ---------------------------------------------------------------------------
+
+
+class TestStrictConcurrency:
+
+    def test_concurrent_verbatim_modes(self):
+        """Concurrent scoring calls with different verbatim settings must not interfere."""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        sections = (
+            SectionSpec("basics", SectionKind.SINGLETON, ("fname", "lname")),
+        )
+        gt = {"basics": {"fname": "John", "lname": "Doe"}}
+        pred_lower = {"basics": {"fname": "john", "lname": "doe"}}
+
+        results = {"verbatim": [], "nonverbatim": []}
+
+        def run_verbatim():
+            r = score_resume_strict(gt, pred_lower, sections, verbatim=True)
+            return "verbatim", r["f1"]
+
+        def run_nonverbatim():
+            r = score_resume_strict(gt, pred_lower, sections, verbatim=False)
+            return "nonverbatim", r["f1"]
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            futs = []
+            for _ in range(20):
+                futs.append(pool.submit(run_verbatim))
+                futs.append(pool.submit(run_nonverbatim))
+            for fut in as_completed(futs):
+                mode, f1 = fut.result()
+                results[mode].append(f1)
+
+        assert all(f1 < 1.0 for f1 in results["verbatim"]), "verbatim should NOT match case-different names"
+        assert all(f1 == 1.0 for f1 in results["nonverbatim"]), "nonverbatim should match case-different names"
 
 
 # ---------------------------------------------------------------------------

@@ -30,6 +30,7 @@ extraction.
 from __future__ import annotations
 
 import re
+import threading
 from contextlib import contextmanager
 from typing import Sequence
 
@@ -175,7 +176,7 @@ def _split_comma_skills(skills: list[str]) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# Hungarian entity alignment (cell-mismatch cost, no threshold)
+# Hungarian entity alignment (cell-mismatch cost, rejects total mismatches)
 # ---------------------------------------------------------------------------
 
 def _rb_cell_mismatch_count(
@@ -253,6 +254,9 @@ def _rb_align_entities(
     spurious_pred = set(range(m))
 
     for r, c in zip(row_ind, col_ind):
+        mismatches, total = _rb_cell_mismatch_count(gt_items[r], pred_items[c], s_fields)
+        if total > 0 and mismatches == total:
+            continue
         matched.append((r, c))
         missed_gt.discard(r)
         spurious_pred.discard(c)
@@ -273,7 +277,12 @@ _GLYPHS = str.maketrans(
     }
 )
 
-_active_normalize = _rb_normalize
+_tls = threading.local()
+
+
+def _active_normalize(s: object) -> str:
+    fn = getattr(_tls, "normalize", _rb_normalize)
+    return fn(s)
 
 
 def verbatim_normalize(s: object) -> str:
@@ -285,13 +294,13 @@ def verbatim_normalize(s: object) -> str:
 
 @contextmanager
 def _text_rule(verbatim: bool):
-    """Swap the string normalization for the duration of a scoring call."""
-    global _active_normalize
-    _active_normalize = verbatim_normalize if verbatim else _rb_normalize
+    """Set the per-thread string normalization for the duration of a scoring call."""
+    prev = getattr(_tls, "normalize", _rb_normalize)
+    _tls.normalize = verbatim_normalize if verbatim else _rb_normalize
     try:
         yield
     finally:
-        _active_normalize = _rb_normalize
+        _tls.normalize = prev
 
 
 # ---------------------------------------------------------------------------

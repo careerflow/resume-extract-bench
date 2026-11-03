@@ -1,6 +1,6 @@
 # ResumeBench-Strict Scoring Guide
 
-Record-level binary scoring for `resume-extract-bench`. An entity is ONE unit: it is correct only if every field matches. No partial credit.
+Per-field scoring for `resume-extract-bench`. Each field in a matched entity is scored independently — partial credit for records that match some fields but not all.
 
 **Repo:** [`careerflow/resume-extract-bench`](https://github.com/careerflow/resume-extract-bench)
 **Dataset:** [`ResumeBench`](https://huggingface.co/datasets/careerflow/ResumeExtractBench) (HuggingFace)
