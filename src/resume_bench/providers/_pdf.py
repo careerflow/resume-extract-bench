@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import fitz
+import pymupdf as fitz
 
 from resume_bench.providers.base import DocumentInfo
 

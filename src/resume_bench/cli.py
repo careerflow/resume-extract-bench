@@ -52,9 +52,7 @@ def status():
 
 
 @app.command()
-def providers(
-    check: bool = typer.Option(False, "--check", help="Run healthcheck on each provider"),
-):
+def providers():
     """List available pipelines and providers."""
     from resume_bench.providers.pipelines import PIPELINES
 
@@ -150,8 +148,6 @@ def leaderboard(
         for grade_path in grades_dir.glob("*.grade.json"):
             with open(grade_path) as f:
                 data = json.load(f)
-            if not data.get("completed", True):
-                continue
             f1s.append(data.get("f1", 0.0))
 
         if f1s:

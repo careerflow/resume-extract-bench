@@ -1,6 +1,6 @@
 # ResumeBench-Strict Scoring Guide
 
-Record-level binary scoring for `resume-extract-bench`. An entity is ONE unit: it is correct only if every field matches. No partial credit.
+Per-field scoring for `resume-extract-bench`. Each field in a matched entity is scored independently — partial credit for records that match some fields but not all.
 
 **Repo:** [`careerflow/resume-extract-bench`](https://github.com/careerflow/resume-extract-bench)
 **Dataset:** [`ResumeBench`](https://huggingface.co/datasets/careerflow/ResumeExtractBench) (HuggingFace)
@@ -109,7 +109,7 @@ python -m resume_bench.cli leaderboard
 ```
 
 ```bash
-python -m resume_bench.cli grade-file my_predictions.jsonl --verbatim
+python -m resume_bench.cli grade-file my_predictions.jsonl  # verbatim is the default
 ```
 
 ### Option B: Python API
@@ -136,13 +136,17 @@ result = score_resume_strict(gt, pred, SECTIONS, verbatim=True)
 
 ### Core Rules
 
-1. **Record-level units.** An entity is ONE unit. Correct only if aligned AND every non-empty field matches AND bullets match one-for-one.
+1. **Per-field units.** Each field in a matched entity is scored independently — partial credit for records that match some fields but not all.
 
-2. **Empty is not free.** Both sides null/empty does NOT count as correct.
+2. **Identity matching.** Entities are matched by identity fields (e.g. company + position + years) using greedy matching. The `--gate` threshold (default 1.0) controls how strictly identity fields must match.
 
-3. **Section-averaged.** F1 is computed per section and averaged, so every section weighs the same.
+3. **Empty is not free.** Both sides null/empty does NOT count as correct.
 
-4. **Verbatim text** (with `--verbatim`). Case and punctuation count. Only typographic variants are folded.
+4. **Section-averaged.** F1 is computed per section and averaged, so every section weighs the same.
+
+5. **Verbatim text (default).** Case and punctuation count. Only typographic variants are folded. Contacts and locations compared case-insensitively. Use `--no-verbatim` for standard mode.
+
+6. **Failed extractions score 0.** Crashes are penalized, not skipped.
 
 ### Standard vs Verbatim Normalization
 
@@ -150,13 +154,13 @@ result = score_resume_strict(gt, pred, SECTIONS, verbatim=True)
 
 **Verbatim mode** (`verbatim_normalize`): fold typographic variants only (smart quotes, em dashes), collapse whitespace. Case and punctuation preserved.
 
-### Entity Alignment (Hungarian Algorithm)
+### Entity Alignment
 
-GT entities matched to predicted entities via cell-mismatch cost matrix + Hungarian algorithm (`scipy.optimize.linear_sum_assignment`). No threshold — every assignment kept.
+Structured sections (experience, education, projects, etc.) use **identity-field greedy matching** — entities are matched by their identity fields (company + position + years, etc.) with a configurable gate. Keyword sections (languages, interests, profiles, publications) use **Hungarian algorithm** alignment.
 
-### Record-Level Scoring
+### Per-Field Scoring
 
-Each matched pair: all fields must match AND bullet count must match AND each bullet[i] must match. One wrong field = entire entity scores 0.
+Each matched pair is scored per-field. Scalar fields: 1 if equal, 0 otherwise. Description bullets compared positionally — bullet[0] vs bullet[0], each scoring 1 or 0. Missing/extra bullets score 0.
 
 ---
 
@@ -181,10 +185,11 @@ Each matched pair: all fields must match AND bullet count must match AND each bu
 }
 ```
 
-- TechCorp pair: all scalars match, but GT has 2 bullets, pred has 1 → **FAIL** (entire entity = 0)
-- StartupXYZ: missed → expected only
+**TechCorp (matched):** company=1, position=1, bullet[0]=1, bullet[1]=0 (missing) → correct=3, expected=4, predicted=3
 
-Experience: correct=0, expected=2, predicted=1 → F1=0.0
+**StartupXYZ (missed):** all fields are expected-only → correct=0, expected=3, predicted=0
+
+**Experience totals:** correct=3, expected=7, predicted=3 → Precision=1.0, Recall=3/7=0.43, F1=0.60
 
 ---
 

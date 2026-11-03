@@ -74,7 +74,7 @@ def get_dataset_status() -> dict[str, Any]:
     base = settings.data_dir / "dataset"
     info = {}
 
-    for split_name in ["mini", "dev", "test"]:
+    for split_name in ["mini", "test"]:
         jsonl_path = base / f"{split_name}.jsonl"
 
         if jsonl_path.exists():

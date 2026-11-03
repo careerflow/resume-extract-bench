@@ -87,15 +87,14 @@ def grade_pipelines_strict(
             result["completed"] = True
             scores.append(result)
 
-        completed = [s for s in scores if s.get("completed")]
-        completed_count = len(completed)
+        completed_count = sum(1 for s in scores if s.get("completed"))
 
-        resume_f1s = [s["f1"] for s in completed]
+        resume_f1s = [s["f1"] for s in scores]
         macro_f1 = sum(resume_f1s) / len(resume_f1s) if resume_f1s else 0.0
 
-        total_correct = sum(s.get("correct", 0) for s in completed)
-        total_expected = sum(s.get("expected", 0) for s in completed)
-        total_predicted = sum(s.get("predicted", 0) for s in completed)
+        total_correct = sum(s.get("correct", 0) for s in scores)
+        total_expected = sum(s.get("expected", 0) for s in scores)
+        total_predicted = sum(s.get("predicted", 0) for s in scores)
 
         grades_dir = settings.output_dir / name / split / "grades"
         grades_dir.mkdir(parents=True, exist_ok=True)

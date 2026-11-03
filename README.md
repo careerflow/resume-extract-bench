@@ -72,29 +72,24 @@ Run `resume-bench providers` to see all available pipelines. A selection:
 
 ## Scoring: ResumeBench-Strict
 
-The sole scoring method is **ResumeBench-Strict** — a record-level binary scoring algorithm.
+The sole scoring method is **ResumeBench-Strict** — a per-field scoring algorithm with identity-gated matching.
 
-### Three Rules
+### Rules
 
-1. **Record-level units.** An entity (one job, school, certification, etc.) is ONE unit: it is correct only if it is aligned AND every non-empty field matches AND its bullets match one-for-one (same count, each bullet equal).
+1. **Per-field units.** Each field in a matched entity is scored independently — partial credit for records that match some fields but not all. Description bullets are compared positionally (bullet[0] vs bullet[0], etc.).
 
-2. **Empty is not free.** Basics fields count only where the label or the parser has a value. Skills: one unit per skill.
+2. **Identity matching.** Entities in structured sections (experience, education, projects, etc.) are matched by identity fields (e.g. company + position + years) using direct greedy matching with a configurable gate (default 1.0 = all identity fields must match). Keyword sections (languages, interests, profiles, publications) use Hungarian alignment.
 
-3. **Section-averaged.** Per document, F1 / precision / recall are computed per section and averaged, so every section weighs the same.
+3. **Empty is not free.** Basics fields count only where the label or the parser has a value. Skills: one unit per skill.
 
-### Verbatim Mode (default)
+4. **Section-averaged.** Per document, F1 / precision / recall are computed per section and averaged, so every section weighs the same.
 
-Verbatim mode is on by default. Strings match only after whitespace collapsing — case and punctuation count. Typographic variants (smart quotes, em dashes, soft hyphens) are folded. Pass `--no-verbatim` to disable.
-
-### Alignment
-
-Predicted entities are aligned to ground truth using the **Hungarian algorithm** (optimal bipartite matching) with a cell-mismatch cost matrix.
+5. **Verbatim text (default).** Strings match only after whitespace collapsing — case and punctuation count. Typographic variants (smart quotes, em dashes, soft hyphens) are folded. Contacts and locations are compared case-insensitively. Pass `--no-verbatim` to disable.
 
 ### Scoring Rules
 
 - **Failed extractions score 0** in the headline F1 (not skipped). A provider that crashes on 50% of resumes gets penalized.
 - **Empty-vs-empty sections are vacuous** and excluded from the headline average.
-
 ## Schema
 
 The benchmark uses a 14-section resume schema. Each array section is wrapped as `{sectionTitle, items}` and `personalSummary` as `{sectionTitle, text}`.

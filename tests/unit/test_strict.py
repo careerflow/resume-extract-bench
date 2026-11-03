@@ -334,6 +334,27 @@ class TestStrictKeywordSections:
         r = score_resume_strict(gt, pred, sections)
         assert r["sections"]["languages"]["correct"] == 2
 
+    def test_total_mismatch_rejected(self):
+        """Completely mismatched entities should not be paired by Hungarian."""
+        gt = {"languages": [{"name": "French"}]}
+        pred = {"languages": [{"name": "Mandarin"}]}
+        sections = (SectionSpec("languages", SectionKind.ENTITY_LIST, ("name",)),)
+        r = score_resume_strict(gt, pred, sections)
+        sec = r["sections"]["languages"]
+        assert sec["correct"] == 0
+        assert sec["expected"] == 1
+        assert sec["predicted"] == 1
+
+    def test_partial_match_still_paired(self):
+        """Entities with at least one matching field should still be paired."""
+        gt = {"publications": [{"name": "Paper A", "date": "2023"}]}
+        pred = {"publications": [{"name": "Paper A", "date": "2024"}]}
+        sections = (SectionSpec("publications", SectionKind.ENTITY_LIST, ("name",)),)
+        r = score_resume_strict(gt, pred, sections)
+        sec = r["sections"]["publications"]
+        assert sec["correct"] == 1
+        assert sec["expected"] == 2
+
 
 # ---------------------------------------------------------------------------
 # score_resume_strict — personalSummary
@@ -417,6 +438,46 @@ class TestStrictVerbatim:
 
 
 # ---------------------------------------------------------------------------
+# Thread-safety: concurrent scoring calls with different verbatim settings
+# ---------------------------------------------------------------------------
+
+
+class TestStrictConcurrency:
+
+    def test_concurrent_verbatim_modes(self):
+        """Concurrent scoring calls with different verbatim settings must not interfere."""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        sections = (
+            SectionSpec("basics", SectionKind.SINGLETON, ("fname", "lname")),
+        )
+        gt = {"basics": {"fname": "John", "lname": "Doe"}}
+        pred_lower = {"basics": {"fname": "john", "lname": "doe"}}
+
+        results = {"verbatim": [], "nonverbatim": []}
+
+        def run_verbatim():
+            r = score_resume_strict(gt, pred_lower, sections, verbatim=True)
+            return "verbatim", r["f1"]
+
+        def run_nonverbatim():
+            r = score_resume_strict(gt, pred_lower, sections, verbatim=False)
+            return "nonverbatim", r["f1"]
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            futs = []
+            for _ in range(20):
+                futs.append(pool.submit(run_verbatim))
+                futs.append(pool.submit(run_nonverbatim))
+            for fut in as_completed(futs):
+                mode, f1 = fut.result()
+                results[mode].append(f1)
+
+        assert all(f1 < 1.0 for f1 in results["verbatim"]), "verbatim should NOT match case-different names"
+        assert all(f1 == 1.0 for f1 in results["nonverbatim"]), "nonverbatim should match case-different names"
+
+
+# ---------------------------------------------------------------------------
 # score_resume_strict — gate threshold
 # ---------------------------------------------------------------------------
 
@@ -467,3 +528,83 @@ class TestGradeSingleStrict:
         r_verbatim = grade_single_strict(gt, pred, verbatim=True)
         assert r_default["f1"] == 1.0
         assert r_verbatim["f1"] < 1.0
+
+
+# ---------------------------------------------------------------------------
+# Unicode NFC normalization
+# ---------------------------------------------------------------------------
+
+
+class TestUnicodeNFC:
+
+    def test_nfc_nfd_match_verbatim(self):
+        """NFC and NFD representations of the same accented char must match."""
+        import unicodedata
+
+        nfc = unicodedata.normalize("NFC", "resumé")  # composed e-acute
+        nfd = unicodedata.normalize("NFD", "resumé")  # e + combining acute
+        assert verbatim_normalize(nfc) == verbatim_normalize(nfd)
+
+    def test_nfc_nfd_match_standard(self):
+        from resume_bench.grading.strict import _rb_normalize
+
+        import unicodedata
+
+        nfc = unicodedata.normalize("NFC", "José")
+        nfd = unicodedata.normalize("NFD", "José")
+        assert _rb_normalize(nfc) == _rb_normalize(nfd)
+
+
+# ---------------------------------------------------------------------------
+# Ligature folding
+# ---------------------------------------------------------------------------
+
+
+class TestLigatureFolding:
+
+    def test_fi_ligature_verbatim(self):
+        assert verbatim_normalize("ﬁnance") == verbatim_normalize("finance")
+
+    def test_fl_ligature_verbatim(self):
+        assert verbatim_normalize("ﬂow") == verbatim_normalize("flow")
+
+    def test_ffi_ligature_verbatim(self):
+        assert verbatim_normalize("oﬃce") == verbatim_normalize("office")
+
+    def test_fi_ligature_standard(self):
+        from resume_bench.grading.strict import _rb_normalize
+
+        assert _rb_normalize("ﬁnance") == _rb_normalize("finance")
+
+
+# ---------------------------------------------------------------------------
+# URL dict comparison
+# ---------------------------------------------------------------------------
+
+
+class TestURLDictComparison:
+
+    def test_dict_key_order_independent(self):
+        """URL dicts with same content but different key order must match."""
+        g = {"href": "https://example.com", "label": "Example"}
+        p = {"label": "Example", "href": "https://example.com"}
+        with _text_rule(True):
+            assert _field_passes("url", g, p) is True
+
+    def test_dict_value_mismatch(self):
+        g = {"href": "https://a.com", "label": "A"}
+        p = {"href": "https://b.com", "label": "A"}
+        with _text_rule(True):
+            assert _field_passes("url", g, p) is False
+
+    def test_dict_vs_none(self):
+        """Dict compared to non-dict falls through to string comparison."""
+        g = {"href": "https://x.com"}
+        with _text_rule(True):
+            assert _field_passes("url", g, None) is False
+
+    def test_dict_extra_key(self):
+        g = {"href": "https://x.com", "label": "X"}
+        p = {"href": "https://x.com"}
+        with _text_rule(True):
+            assert _field_passes("url", g, p) is False

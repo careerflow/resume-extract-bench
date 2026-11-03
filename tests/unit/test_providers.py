@@ -517,10 +517,10 @@ class TestPdfToBase64Images:
 
     def test_returns_list_of_strings(self, tmp_path):
         """Create a minimal PDF and verify rasterization."""
-        import fitz
+        import pymupdf
 
         # Create a 1-page PDF with some text
-        doc = fitz.open()
+        doc = pymupdf.open()
         page = doc.new_page(width=200, height=200)
         page.insert_text((50, 100), "Hello World")
         pdf_path = tmp_path / "test.pdf"
@@ -537,9 +537,9 @@ class TestPdfToBase64Images:
 
     def test_multi_page(self, tmp_path):
         """Multi-page PDF returns one image per page."""
-        import fitz
+        import pymupdf
 
-        doc = fitz.open()
+        doc = pymupdf.open()
         for i in range(3):
             page = doc.new_page(width=200, height=200)
             page.insert_text((50, 100), f"Page {i + 1}")

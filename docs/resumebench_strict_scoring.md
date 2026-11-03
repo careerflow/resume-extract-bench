@@ -5,20 +5,27 @@ Implementation: `resume_bench.grading.strict` (`score_resume_strict`).
 
 ## Rules
 
-Three rules define the scoring:
+Six rules define the scoring:
 
-1. **Record-level units.** Each entity (job, school, project, certification,
-   award, volunteer role, publication, language, interest, profile, custom
-   section, summary) is one unit. It is correct only if it is aligned **and**
-   every field that is non-empty on either side matches **and** its bullets
-   match one-for-one (same count, each equal). Expected = label entities,
-   predicted = parser entities.
-2. **Empty is not free.** Basics fields (name = fname + lname, prefix, suffix,
+1. **Per-field units.** Each field in a matched entity is scored independently —
+   partial credit for records that match some fields but not all. Description
+   bullets are compared positionally (bullet[0] vs bullet[0], etc.); missing
+   or extra bullets score 0.
+2. **Identity matching.** Entities in structured sections (experience, education,
+   projects, etc.) are matched by identity fields (company + position + years,
+   institution + studyType + years, etc.) using direct greedy matching with a
+   configurable gate (default 1.0 = all identity fields must match). Keyword
+   sections (languages, interests, profiles, publications) use Hungarian alignment.
+3. **Empty is not free.** Basics fields (name = fname + lname, prefix, suffix,
    email, phone, city, state, country, photo, LinkedIn) count only where the
    label or the parser has a value. Skills: one unit per skill.
-3. **Section-averaged.** Per document, precision / recall / F1 are computed per
+4. **Section-averaged.** Per document, precision / recall / F1 are computed per
    section (sections present in the label or the output) and averaged, so every
    section weighs the same. Documents are then averaged (macro over resumes).
+5. **Failed extractions score 0.** A provider that crashes on a resume gets F1=0
+   for that resume (not skipped), penalizing unreliable providers.
+6. **Name composition.** The ``basics`` name is composed from
+   ``prefix + fname + lname + suffix``, whitespace-collapsed.
 
 ## Verbatim mode (`verbatim=True`)
 
