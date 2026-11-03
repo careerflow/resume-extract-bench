@@ -459,7 +459,7 @@ class TestPipelineSpecParseSource:
             pipeline_name="test",
             provider_name="openrouter",
             input_mode=InputMode.IMAGES,
-            config={"model": "moonshotai/kimi-k3"},
+            config={"model": "google/gemma-4-26b-a4b-it"},
         )
         assert spec.input_mode == InputMode.IMAGES
         assert spec.parse_source is None
@@ -492,7 +492,7 @@ class TestRunRecordInputMethod:
     def test_rasterized_images_method(self):
         record = RunRecord(
             resume_id="abc",
-            pipeline_name="openrouter_kimi_k3",
+            pipeline_name="openrouter_gemma4_26b",
             input_method="rasterized_images",
         )
         assert record.input_method == "rasterized_images"
