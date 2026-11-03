@@ -38,8 +38,8 @@ python -m resume_bench.cli run llamaextract_agentic_plus openai_gpt-5.6-sol_text
 # Grade with ResumeBench-Strict (default)
 python -m resume_bench.cli grade llamaextract_agentic_plus openai_gpt-5.6-sol_text
 
-# Grade with verbatim mode (case/punctuation sensitive)
-python -m resume_bench.cli grade llamaextract_agentic_plus --verbatim
+# Grade (verbatim is the default; use --no-verbatim for case-insensitive)
+python -m resume_bench.cli grade llamaextract_agentic_plus
 
 # View leaderboard
 python -m resume_bench.cli leaderboard
@@ -89,7 +89,7 @@ python -m resume_bench.cli run llamaextract_agentic_plus --limit 10
 
 ```bash
 python -m resume_bench.cli grade llamaextract_agentic_plus
-python -m resume_bench.cli grade llamaextract_agentic_plus --verbatim
+python -m resume_bench.cli grade llamaextract_agentic_plus --no-verbatim  # case-insensitive
 ```
 
 ### 4. Leaderboard
@@ -125,9 +125,9 @@ print(f"F1: {result['f1']:.4f}")
 
 ```python
 from resume_bench.grading.strict import score_resume_strict
-from resume_bench.schema.sections import get_sections
+from resume_bench.schema.sections import SECTIONS
 
-result = score_resume_strict(gt, pred, get_sections(), verbatim=True)
+result = score_resume_strict(gt, pred, SECTIONS, verbatim=True)
 ```
 
 ---

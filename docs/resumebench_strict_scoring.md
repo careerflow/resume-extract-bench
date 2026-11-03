@@ -62,9 +62,9 @@ Or use `score_resume_strict` directly for custom section specs:
 
 ```python
 from resume_bench.grading.strict import score_resume_strict
-from resume_bench.schema.sections import get_sections
+from resume_bench.schema.sections import SECTIONS
 
-result = score_resume_strict(gt, pred, get_sections(), verbatim=True)
+result = score_resume_strict(gt, pred, SECTIONS, verbatim=True)
 ```
 
 ## Properties
