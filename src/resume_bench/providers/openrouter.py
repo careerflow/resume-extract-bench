@@ -29,10 +29,6 @@ _OPENROUTER_RATES: dict[str, tuple[float, float]] = {
     "qwen/qwen3-30b-a3b": (0.13, 0.13),
     "qwen/qwen2.5-72b-instruct": (0.36, 0.40),
     "qwen/qwen2.5-7b-instruct": (0.05, 0.10),
-    # Moonshot / Kimi
-    "moonshotai/kimi-k3": (2.70, 13.50),
-    "moonshotai/kimi-k2": (0.60, 2.50),
-    "moonshotai/kimi-vl-a3b-thinking": (0.0, 0.0),
     # Z-AI / GLM
     "z-ai/glm-5.3-flash": (0.15, 0.50),
     "thudm/glm-4-32b": (0.10, 0.10),

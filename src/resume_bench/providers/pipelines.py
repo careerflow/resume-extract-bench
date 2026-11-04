@@ -253,25 +253,6 @@ PIPELINES: list[PipelineSpec] = [
         parse_source="llamaparse",
         config={"model": "qwen/qwen2.5-7b-instruct"},
     ),
-    # Moonshot / Kimi (vision → rasterized images)
-    PipelineSpec(
-        pipeline_name="openrouter_kimi_k3",
-        provider_name="openrouter",
-        input_mode=InputMode.IMAGES,
-        config={"model": "moonshotai/kimi-k3"},
-    ),
-    PipelineSpec(
-        pipeline_name="openrouter_kimi_k2",
-        provider_name="openrouter",
-        input_mode=InputMode.IMAGES,
-        config={"model": "moonshotai/kimi-k2"},
-    ),
-    PipelineSpec(
-        pipeline_name="openrouter_kimi_vl_a3b",
-        provider_name="openrouter",
-        input_mode=InputMode.IMAGES,
-        config={"model": "moonshotai/kimi-vl-a3b-thinking"},
-    ),
     # Z-AI / GLM
     PipelineSpec(
         pipeline_name="openrouter_glm53_flash",
